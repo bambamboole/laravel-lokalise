@@ -27,7 +27,7 @@ the keys into their respective files, it converts the placeholders back to the L
 You can install the package via composer.
 
 ```bash
-composer require --dev bambamboole/laravel-lokalise
+composer require bambamboole/laravel-lokalise
 ```
 
 Add the following environment variables to your `.env` file:
@@ -57,6 +57,12 @@ composer test
 ```
 
 ## Contributing
+
+### Ideas/Roadmap
+* Add more tests
+* Do not override existing lokal translations on lokalise:download. Update existing and keep new
+* Support multi pluralisation like `'apples' => '{0} There are none|[1,19] There are some|[20,*] There are many'`
+* Your idea here 
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
