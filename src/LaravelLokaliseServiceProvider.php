@@ -15,9 +15,11 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
     {
         $this->app->singleton(LokaliseService::class, function (Application $app) {
             return new LokaliseService(
-                new LokaliseApiClient(config('lokalise.token')),
+                new LokaliseClient(
+                    new LokaliseApiClient(config('lokalise.token')),
+                    config('lokalise.project_id'),
+                ),
                 new Filesystem(),
-                config('lokalise.project_id'),
                 $app->langPath(),
                 $app->basePath(),
             );

@@ -5,45 +5,29 @@ namespace Bambamboole\LaravelLokalise;
 use Bambamboole\LaravelTranslationDumper\ArrayExporter;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
-use Lokalise\LokaliseApiClient;
 
 class LokaliseService
 {
     public function __construct(
-        private LokaliseApiClient $apiClient,
+        private LokaliseClient $client,
         private Filesystem $fs,
-        private string $projectId,
         private string $langPath,
         private string $basePath,
     ) {}
 
     public function downloadTranslations(): void
     {
-        $result = $this->apiClient->files->list($this->projectId);
-        $files = collect($result->body['files'])
-            // Ignore the __unassigned__ file
-            ->filter(fn ($file) => $file['filename'] !== '__unassigned__')
-            // Ignore files without keys
-            ->filter(fn ($file) => $file['key_count'] >= 1)
-            // Get the filename
-            ->map(fn ($file) => $file['filename']);
+        $files = $this->client->getFileNames();
 
         foreach ($files as $file) {
-            $result = $this->apiClient->keys->list($this->projectId, [
-                'filter_filenames' => $file,
-                'include_translations' => 1,
-                'limit' => 500,
-            ]);
-            $keys = $result->body['keys'];
-            foreach ($this->getLocales() as $locale) {
+            $keys = $this->client->getKeys($file);
+            foreach ($this->client->getLocales() as $locale) {
                 $translations = [];
-                foreach ($keys as $key) {
-                    $keyName = Str::replace('::', '.', $key['key_name']['web']);
-                    $translation = collect($key['translations'])->filter(fn ($translation) => $translation['language_iso'] === $locale)->first();
-                    if (! $translation || $this->isEmptyTranslation($translation)) {
+                foreach ($keys as $key => $translationsForKey) {
+                    if (! isset($translationsForKey[$locale]) || $this->isEmptyTranslation($translationsForKey[$locale])) {
                         continue;
                     }
-                    $translations[$keyName] = $this->replacePlaceholders($translation['translation']);
+                    $translations[$key] = $this->replacePlaceholders($translationsForKey[$locale]);
                 }
                 if (empty($translations)) {
                     continue;
@@ -64,7 +48,7 @@ class LokaliseService
 
     public function uploadTranslations(): void
     {
-        foreach ($this->getLocales() as $locale) {
+        foreach ($this->client->getLocales() as $locale) {
             $this->uploadJsonFileIfExists($locale);
             $this->uploadPhpFiles($locale);
         }
@@ -78,15 +62,11 @@ class LokaliseService
         }
         $translations = json_decode($this->fs->get($filePath), true);
         $translations = $this->prepare($translations);
-        $this->apiClient->files->upload($this->projectId, [
-            'data' => base64_encode(json_encode($translations)),
-            'filename' => ltrim(str_replace($this->basePath, '', $filePath), '/'),
-            'lang_iso' => $locale,
-            'convert_placeholders' => true,
-            'replace_modified' => true,
-            'distinguish_by_file' => true,
-            'slashn_to_linebreak' => true,
-        ]);
+        $this->client->uploadFile(
+            json_encode($translations),
+            ltrim(str_replace($this->basePath, '', $filePath), '/'),
+            $locale,
+        );
     }
 
     private function uploadPhpFiles(string $locale): void
@@ -102,16 +82,12 @@ class LokaliseService
             $group = $file->getBasename('.php');
             $translations = require $absoluteFilePath;
             $translations = $this->prepare([$group => $translations]);
-            $this->apiClient->files->upload($this->projectId, [
-                'data' => base64_encode(json_encode($translations)),
-                'filename' => ltrim(str_replace($this->basePath, '', $absoluteFilePath), '/'),
-                'lang_iso' => $locale,
-                'format' => 'json',
-                'distinguish_by_file' => true, // This is important to distinguish between different files with the same key
-                'replace_modified' => true,
-                'convert_placeholders' => true,
-                'slashn_to_linebreak' => true,
-            ]);
+
+            $this->client->uploadFile(
+                json_encode($translations),
+                ltrim(str_replace($this->basePath, '', $absoluteFilePath), '/'),
+                $locale,
+            );
         }
     }
 
@@ -143,7 +119,7 @@ class LokaliseService
         return $lokaliseTranslations;
     }
 
-    private function replacePlaceholders($translation)
+    private function replacePlaceholders(string $translation): string
     {
         $json = json_decode($translation, true);
         if ($json && isset($json['one'], $json['other'])) {
@@ -180,19 +156,12 @@ class LokaliseService
         return $result;
     }
 
-    private function getLocales(): array
+    private function isEmptyTranslation(string $translation): bool
     {
-        $result = $this->apiClient->languages->list($this->projectId);
-
-        return array_map(fn ($language) => $language['lang_iso'], $result->body['languages']);
-    }
-
-    private function isEmptyTranslation(array $translation): bool
-    {
-        if (empty($translation['translation'])) {
+        if (empty($translation)) {
             return true;
         }
-        $json = json_decode($translation['translation'], true);
+        $json = json_decode($translation, true);
         if ($json && isset($json['one'], $json['other']) && empty($json['one']) && empty($json['other'])) {
             return true;
         }
