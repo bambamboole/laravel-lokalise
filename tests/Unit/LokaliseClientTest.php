@@ -46,6 +46,29 @@ class LokaliseClientTest extends TestCase
         $this->assertEquals(['en.json', 'en/test.php'], $filenames);
     }
 
+    public function testGetFilenamesWorksWithPagination()
+    {
+        $this->files->expects($counter = self::exactly(3))
+            ->method('list')
+            ->willReturnCallback(
+                function ($_, array $options) use ($counter) {
+                    self::assertEquals($counter->numberOfInvocations(), $options['page']);
+                    $filesCount = $counter->numberOfInvocations() === 3 ? 1 : 500;
+                    $files = array_map(
+                        fn ($key) => ['filename' => "test-{$counter->numberOfInvocations()}-{$key}.json", 'key_count' => 1],
+                        range(0, $filesCount - 1),
+                    );
+
+                    return $this->mockResponse(['files' => $files]);
+                }
+            );
+
+        $client = $this->createSubject();
+        $filenames = $client->getFileNames();
+
+        $this->assertCount(1001, $filenames);
+    }
+
     public function testGetKeys()
     {
         $this->keys->expects(self::once())

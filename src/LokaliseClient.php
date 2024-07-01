@@ -11,9 +11,19 @@ class LokaliseClient
 
     public function getFileNames(): array
     {
-        $result = $this->apiClient->files->list($this->projectId);
+        $files = [];
+        $page = 0;
+        do {
+            $page++;
+            $result = $this->apiClient->files->list($this->projectId, [
+                'limit' => 500,
+                'page' => $page,
+            ]);
+            $newFiles = $result->body['files'];
+            $files = array_merge($files, $newFiles);
+        } while (count($newFiles) === 500);
 
-        return collect($result->body['files'])
+        return collect($files)
             // Ignore the __unassigned__ file
             ->filter(fn ($file) => $file['filename'] !== '__unassigned__')
             // Ignore files without keys
