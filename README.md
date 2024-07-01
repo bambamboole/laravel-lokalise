@@ -50,9 +50,6 @@ To download your translations from Lokalise you can run the following command:
 php artisan lokalise:download
 ```
 
-## Known issues
-Localise pagination is not working as expected. Therefor we can currently only fetch 500 keys per file.
-
 ### Testing
 
 ```bash

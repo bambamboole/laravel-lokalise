@@ -20,18 +20,28 @@ class LokaliseClient
             ->filter(fn ($file) => $file['key_count'] >= 1)
             // Get the filename
             ->map(fn ($file) => $file['filename'])
+            // Reset the keys
+            ->values()
+            // Convert to array
             ->toArray();
     }
 
     public function getKeys(string $fileName): array
     {
-        $result = $this->apiClient->keys->list($this->projectId, [
-            'filter_filenames' => $fileName,
-            'include_translations' => 1,
-            'limit' => 500,
-        ]);
+        $keys = [];
+        $page = 0;
+        do {
+            $page++;
+            $result = $this->apiClient->keys->list($this->projectId, [
+                'filter_filenames' => $fileName,
+                'include_translations' => 1,
+                'limit' => 500,
+                'page' => $page,
+            ]);
+            $newKeys = $result->body['keys'];
+            $keys = array_merge($keys, $newKeys);
+        } while (count($newKeys) === 500);
 
-        $keys = $result->body['keys'];
         $preparedKeys = [];
         foreach ($keys as $key) {
             $keyName = Str::replace('::', '.', $key['key_name']['web']);
