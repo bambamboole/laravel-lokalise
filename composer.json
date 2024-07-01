@@ -1,6 +1,6 @@
 {
     "name": "bambamboole/laravel-lokalise",
-    "description": "A laravel package to dump missing translation keys into the translation files",
+    "description": "A laravel package to effortlessly sync translations with Lokalise",
     "keywords": [
         "bambamboole",
         "laravel-lokalise"
