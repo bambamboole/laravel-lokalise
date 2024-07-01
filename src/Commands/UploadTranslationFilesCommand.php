@@ -11,7 +11,7 @@ class UploadTranslationFilesCommand extends Command
 
     protected $description = 'Upload translations to Lokalise. This will overwrite existing translations.';
 
-    public function handle(LokaliseService $lokaliseService)
+    public function handle(LokaliseService $lokaliseService): int
     {
         $lokaliseService->uploadTranslations();
 

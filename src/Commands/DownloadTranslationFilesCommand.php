@@ -11,7 +11,7 @@ class DownloadTranslationFilesCommand extends Command
 
     protected $description = 'Download translations from Lokalise. This will overwrite existing files.';
 
-    public function handle(LokaliseService $lokaliseService)
+    public function handle(LokaliseService $lokaliseService): int
     {
         $lokaliseService->downloadTranslations();
 
