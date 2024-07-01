@@ -1,0 +1,53 @@
+{
+    "name": "bambamboole/laravel-lokalise",
+    "description": "A laravel package to dump missing translation keys into the translation files",
+    "keywords": [
+        "bambamboole",
+        "laravel-lokalise"
+    ],
+    "homepage": "https://github.com/bambamboole/laravel-lokalie",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Manuel Christlieb",
+            "email": "manuel@christlieb.eu"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "bambamboole/laravel-translation-dumper": "^0.4.0",
+        "illuminate/console": "^9.0|^10.0|^11.0",
+        "illuminate/support": "^9.0|^10.0|^11.0",
+        "lokalise/php-lokalise-api": "^4.2"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.8",
+        "phpunit/phpunit": "^10.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Bambamboole\\LaravelLokalise\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Bambamboole\\LaravelLokalise\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Bambamboole\\LaravelLokalise\\LaravelLokaliseServiceProvider"
+            ]
+        }
+    }
+}
