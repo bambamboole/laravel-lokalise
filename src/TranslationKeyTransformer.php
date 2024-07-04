@@ -9,31 +9,25 @@ class TranslationKeyTransformer
         $result = [];
 
         foreach ($keysWithTranslations as $dottedString => $translation) {
-            try {
-                $keys = explode('.', $dottedString);
-
-            }catch (\TypeError $e) {
-dump($dottedString, $keysWithTranslations);
-                throw $e;
-            }
+            $keys = explode('.', $dottedString);
             $current = &$result;
 
-            // Check for invalid keys
             foreach ($keys as $key) {
+                // If the current key already exists as a value, skip this dotted string
                 if (isset($current[$key]) && ! is_array($current[$key])) {
-                    // If current key is set as a value, skip invalid nested key
                     continue 2;
                 }
                 $current = &$current[$key];
             }
 
+            // Reset reference to root of result array
             $current = &$result;
             while (count($keys) > 1) {
                 $key = array_shift($keys);
                 if (! isset($current[$key])) {
                     $current[$key] = [];
                 } elseif (! is_array($current[$key])) {
-                    // If current key is set as a value, skip invalid nested key
+                    // If the current key is set as a value, skip this dotted string
                     continue 2;
                 }
                 $current = &$current[$key];
@@ -43,7 +37,7 @@ dump($dottedString, $keysWithTranslations);
             if (! isset($current[$lastKey])) {
                 $current[$lastKey] = $translation;
             } elseif (is_array($current[$lastKey])) {
-                // If the current key is an array, skip invalid key
+                // If the current key is an array, skip this dotted string
                 continue;
             }
         }
