@@ -36,18 +36,22 @@ class LokaliseClient
             ->toArray();
     }
 
-    public function getKeys(string $fileName): array
+    public function getKeys(?string $fileName = null): array
     {
+        $options = [
+            'limit' => 500,
+            'include_translations' => 1,
+        ];
+        if ($fileName !== null) {
+            $options['filter_filenames'] = $fileName;
+        }
+
         $keys = [];
         $page = 0;
         do {
             $page++;
-            $result = $this->apiClient->keys->list($this->projectId, [
-                'filter_filenames' => $fileName,
-                'include_translations' => 1,
-                'limit' => 500,
-                'page' => $page,
-            ]);
+            $options['page'] = $page;
+            $result = $this->apiClient->keys->list($this->projectId, $options);
             $newKeys = $result->body['keys'];
             $keys = array_merge($keys, $newKeys);
         } while (count($newKeys) === 500);
