@@ -10,7 +10,7 @@ class TranslationKeyTransformerTest extends TestCase
     /** @dataProvider dottedToNested */
     public function testTransformDottedToNested(array $dotted, array $nested): void
     {
-        $result = TranslationKeyTransformer::transformDottedToNested($dotted);
+        $result = (new TranslationKeyTransformer())->transformDottedToNested($dotted);
 
         self::assertEquals($nested, $result);
     }
@@ -37,7 +37,7 @@ class TranslationKeyTransformerTest extends TestCase
 
     public function testItThrowsAnExceptionIfAPriorSetKeyHasToBeNested()
     {
-        $nested = TranslationKeyTransformer::transformDottedToNested(
+        $nested = (new TranslationKeyTransformer())->transformDottedToNested(
             [
                 'foo.bar' => 'baz',
                 'foo.bar.baz' => 'bar',

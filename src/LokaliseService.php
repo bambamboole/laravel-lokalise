@@ -10,25 +10,55 @@ class LokaliseService
 {
     public function __construct(
         private LokaliseClient $client,
+        private TranslationKeyTransformer $keyTransformer,
         private Filesystem $fs,
         private string $langPath,
         private string $basePath,
     ) {}
 
-    public function downloadTranslations(): void
+    public function downloadTranslations(): DownloadReport
     {
+        $report = new DownloadReport();
         $keys = $this->client->getKeys();
 
-        $nonDottedKeys = array_filter($keys, fn ($key) => Str::contains($key, ' '), ARRAY_FILTER_USE_KEY);
-        $this->writeJsonFiles($nonDottedKeys);
-
         $dottedKeys = array_filter($keys, fn ($key) => ! Str::contains($key, ' '), ARRAY_FILTER_USE_KEY);
-        $this->writePhpFiles($dottedKeys);
+        $groupedKeys = [];
+        foreach ($dottedKeys as $key => $translations) {
+            $groupedKeys[Str::before($key, '.')][$key] = $translations;
+        }
+        $nonDottedKeys = array_filter($keys, fn ($key) => Str::contains($key, ' '), ARRAY_FILTER_USE_KEY);
+        $report->addKeyCount(count($dottedKeys), count($nonDottedKeys));
+
+        foreach ($this->client->getLocales() as $locale) {
+            $this->writePhpFiles($locale, $groupedKeys);
+            $this->writeJsonFile($locale, $nonDottedKeys);
+            $report->addLocaleReport(new LocaleReport($locale, $this->keyTransformer->getSkipped()));
+        }
+
+        return $report;
     }
 
-    private function writeJsonFiles(array $keys): void
+    private function writeJsonFile(string $locale, array $keys): void
     {
-        foreach ($this->client->getLocales() as $locale) {
+        $translations = [];
+        foreach ($keys as $key => $translationsForKey) {
+            if (! isset($translationsForKey[$locale]) || $this->isEmptyTranslation($translationsForKey[$locale])) {
+                continue;
+            }
+            $translations[$key] = $this->replacePlaceholders($translationsForKey[$locale]);
+        }
+        if (empty($translations)) {
+            return;
+        }
+        $path = sprintf('%s/%s.json', $this->langPath, $locale);
+        $beautifiedTranslations = json_encode($translations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
+        $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
+        $this->fs->put($path, $beautifiedTranslations);
+    }
+
+    private function writePhpFiles(string $locale, array $groupedKeys): void
+    {
+        foreach ($groupedKeys as $group => $keys) {
             $translations = [];
             foreach ($keys as $key => $translationsForKey) {
                 if (! isset($translationsForKey[$locale]) || $this->isEmptyTranslation($translationsForKey[$locale])) {
@@ -39,39 +69,12 @@ class LokaliseService
             if (empty($translations)) {
                 continue;
             }
-            $path = sprintf('%s/%s.json', $this->langPath, $locale);
-            $beautifiedTranslations = json_encode($translations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
+            $translations = $this->keyTransformer->transformDottedToNested($translations);
+            $path = sprintf('%s/%s/%s.php', $this->langPath, $locale, $group);
+            $translations = $translations[$group];
+            $beautifiedTranslations = (new ArrayExporter)->export($translations);
             $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
             $this->fs->put($path, $beautifiedTranslations);
-        }
-    }
-
-    private function writePhpFiles(array $keys): void
-    {
-        $groupedKeys = [];
-        foreach ($keys as $key => $translations) {
-            $groupedKeys[Str::before($key, '.')][$key] = $translations;
-        }
-
-        foreach ($groupedKeys as $group => $keys) {
-            foreach ($this->client->getLocales() as $locale) {
-                $translations = [];
-                foreach ($keys as $key => $translationsForKey) {
-                    if (! isset($translationsForKey[$locale]) || $this->isEmptyTranslation($translationsForKey[$locale])) {
-                        continue;
-                    }
-                    $translations[$key] = $this->replacePlaceholders($translationsForKey[$locale]);
-                }
-                if (empty($translations)) {
-                    continue;
-                }
-                $translations = TranslationKeyTransformer::transformDottedToNested($translations);
-                $path = sprintf('%s/%s/%s.php', $this->langPath, $locale, $group);
-                $translations = $translations[$group];
-                $beautifiedTranslations = (new ArrayExporter)->export($translations);
-                $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
-                $this->fs->put($path, $beautifiedTranslations);
-            }
         }
     }
 
