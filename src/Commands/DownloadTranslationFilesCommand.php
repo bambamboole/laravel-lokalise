@@ -13,7 +13,18 @@ class DownloadTranslationFilesCommand extends Command
 
     public function handle(LokaliseService $lokaliseService): int
     {
-        $lokaliseService->downloadTranslations();
+        $this->info('Download translations from Lokalise...');
+        $report = $lokaliseService->downloadTranslations();
+        $this->info('Downloaded '.$report->getKeyCount().' keys from Lokalise');
+        $this->info('Dotted Keys    : '.$report->getDottedKeyCount());
+        $this->info('Non dotted Keys: '.$report->getNonDottedKeyCount());
+        foreach ($report->getLocaleReports() as $localeReport) {
+            $this->info('Downloaded translations for locale '.$localeReport->locale);
+            if (count($localeReport->skippedKeys) > 0) {
+                $this->info('Skipped keys: '.count($localeReport->skippedKeys));
+                $this->table(['key', 'value', 'reason'], $localeReport->skippedKeys);
+            }
+        }
 
         return self::SUCCESS;
     }
