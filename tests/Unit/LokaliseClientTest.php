@@ -2,7 +2,10 @@
 
 namespace Bambamboole\LaravelLokalise\Tests\Unit;
 
+use Bambamboole\LaravelLokalise\DTO\Translation;
+use Bambamboole\LaravelLokalise\DTO\TranslationKey;
 use Bambamboole\LaravelLokalise\LokaliseClient;
+use Bambamboole\LaravelLokalise\TranslationKeyFactory;
 use Lokalise\Endpoints\Files;
 use Lokalise\Endpoints\Keys;
 use Lokalise\Endpoints\Languages;
@@ -24,49 +27,6 @@ class LokaliseClientTest extends TestCase
         $this->keys = $this->createMock(Keys::class);
         $this->files = $this->createMock(Files::class);
         $this->languages = $this->createMock(Languages::class);
-    }
-
-    public function testGetFileNames()
-    {
-        $this->files->expects(self::once())
-            ->method('list')
-            ->with('test')
-            ->willReturn($this->mockResponse([
-                'files' => [
-                    ['filename' => '__unassigned__', 'key_count' => 1],
-                    ['filename' => 'en.json', 'key_count' => 1],
-                    ['filename' => 'en/test.php', 'key_count' => 1],
-                    ['filename' => 'empty', 'key_count' => 0],
-                ],
-            ]));
-
-        $client = $this->createSubject();
-        $filenames = $client->getFileNames();
-
-        $this->assertEquals(['en.json', 'en/test.php'], $filenames);
-    }
-
-    public function testGetFilenamesWorksWithPagination()
-    {
-        $this->files->expects($counter = self::exactly(3))
-            ->method('list')
-            ->willReturnCallback(
-                function ($_, array $options) use ($counter) {
-                    self::assertEquals($counter->numberOfInvocations(), $options['page']);
-                    $filesCount = $counter->numberOfInvocations() === 3 ? 1 : 500;
-                    $files = array_map(
-                        fn ($key) => ['filename' => "test-{$counter->numberOfInvocations()}-{$key}.json", 'key_count' => 1],
-                        range(0, $filesCount - 1),
-                    );
-
-                    return $this->mockResponse(['files' => $files]);
-                }
-            );
-
-        $client = $this->createSubject();
-        $filenames = $client->getFileNames();
-
-        $this->assertCount(1001, $filenames);
     }
 
     public function testGetKeys()
@@ -93,7 +53,7 @@ class LokaliseClientTest extends TestCase
         $client = $this->createSubject();
         $result = $client->getKeys('test');
 
-        $this->assertEquals(['test' => ['en' => 'test']], $result);
+        $this->assertEquals([new TranslationKey('test', [new Translation('en', 'test')])], $result);
     }
 
     public function testItResolvesPaginationWhileFetchingKeys()
@@ -176,6 +136,6 @@ class LokaliseClientTest extends TestCase
         $baseClient->files = $this->files;
         $baseClient->languages = $this->languages;
 
-        return new LokaliseClient($baseClient, 'test');
+        return new LokaliseClient($baseClient, new TranslationKeyFactory(), 'test');
     }
 }

@@ -35,9 +35,10 @@ class TranslationKeyTransformerTest extends TestCase
         ];
     }
 
-    public function testItThrowsAnExceptionIfAPriorSetKeyHasToBeNested()
+    public function testItDropsInvalidKeysAndProvidesThemViaSkipped()
     {
-        $nested = (new TranslationKeyTransformer())->transformDottedToNested(
+        $transformer = new TranslationKeyTransformer();
+        $nested = $transformer->transformDottedToNested(
             [
                 'foo.bar' => 'baz',
                 'foo.bar.baz' => 'bar',
@@ -45,5 +46,12 @@ class TranslationKeyTransformerTest extends TestCase
         );
 
         self::assertEquals(['foo' => ['bar' => 'baz']], $nested);
+        self::assertEquals([
+            [
+                'key' => 'foo.bar.baz',
+                'value' => 'bar',
+                'reason' => 'foo.bar already exists as a leaf node',
+            ],
+        ], $transformer->getSkipped());
     }
 }

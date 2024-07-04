@@ -2,6 +2,9 @@
 
 namespace Bambamboole\LaravelLokalise;
 
+use Bambamboole\LaravelLokalise\DTO\DownloadReport;
+use Bambamboole\LaravelLokalise\DTO\LocaleReport;
+use Bambamboole\LaravelLokalise\DTO\TranslationKey;
 use Bambamboole\LaravelTranslationDumper\ArrayExporter;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
@@ -9,11 +12,11 @@ use Illuminate\Support\Str;
 class LokaliseService
 {
     public function __construct(
-        private LokaliseClient $client,
-        private TranslationKeyTransformer $keyTransformer,
-        private Filesystem $fs,
-        private string $langPath,
-        private string $basePath,
+        private readonly LokaliseClient $client,
+        private readonly TranslationKeyTransformer $keyTransformer,
+        private readonly Filesystem $fs,
+        private readonly string $langPath,
+        private readonly string $basePath,
     ) {}
 
     public function downloadTranslations(): DownloadReport
@@ -21,12 +24,12 @@ class LokaliseService
         $report = new DownloadReport();
         $keys = $this->client->getKeys();
 
-        $dottedKeys = array_filter($keys, fn ($key) => ! Str::contains($key, ' '), ARRAY_FILTER_USE_KEY);
+        $dottedKeys = array_filter($keys, fn (TranslationKey $key) => ! Str::contains($key->key, ' '));
         $groupedKeys = [];
-        foreach ($dottedKeys as $key => $translations) {
-            $groupedKeys[Str::before($key, '.')][$key] = $translations;
+        foreach ($dottedKeys as $key) {
+            $groupedKeys[Str::before($key->key, '.')][] = $key;
         }
-        $nonDottedKeys = array_filter($keys, fn ($key) => Str::contains($key, ' '), ARRAY_FILTER_USE_KEY);
+        $nonDottedKeys = array_filter($keys, fn (TranslationKey $key) => Str::contains($key->key, ' '));
         $report->addKeyCount(count($dottedKeys), count($nonDottedKeys));
 
         foreach ($this->client->getLocales() as $locale) {
@@ -38,33 +41,17 @@ class LokaliseService
         return $report;
     }
 
-    private function writeJsonFile(string $locale, array $keys): void
-    {
-        $translations = [];
-        foreach ($keys as $key => $translationsForKey) {
-            if (! isset($translationsForKey[$locale]) || $this->isEmptyTranslation($translationsForKey[$locale])) {
-                continue;
-            }
-            $translations[$key] = $this->replacePlaceholders($translationsForKey[$locale]);
-        }
-        if (empty($translations)) {
-            return;
-        }
-        $path = sprintf('%s/%s.json', $this->langPath, $locale);
-        $beautifiedTranslations = json_encode($translations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
-        $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
-        $this->fs->put($path, $beautifiedTranslations);
-    }
-
     private function writePhpFiles(string $locale, array $groupedKeys): void
     {
         foreach ($groupedKeys as $group => $keys) {
             $translations = [];
-            foreach ($keys as $key => $translationsForKey) {
-                if (! isset($translationsForKey[$locale]) || $this->isEmptyTranslation($translationsForKey[$locale])) {
+            foreach ($keys as $key) {
+                /** @var TranslationKey $key */
+                $translation = $key->getTranslationForLocale($locale);
+                if (! $translation) {
                     continue;
                 }
-                $translations[$key] = $this->replacePlaceholders($translationsForKey[$locale]);
+                $translations[$key->key] = $translation->value;
             }
             if (empty($translations)) {
                 continue;
@@ -78,15 +65,34 @@ class LokaliseService
         }
     }
 
+    private function writeJsonFile(string $locale, array $keys): void
+    {
+        foreach ($keys as $key) {
+            /** @var TranslationKey $key */
+            $translation = $key->getTranslationForLocale($locale);
+            if (! $translation) {
+                continue;
+            }
+            $translations[$key->key] = $translation->value;
+        }
+        if (empty($translations)) {
+            return;
+        }
+        $path = sprintf('%s/%s.json', $this->langPath, $locale);
+        $beautifiedTranslations = json_encode($translations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
+        $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
+        $this->fs->put($path, $beautifiedTranslations);
+    }
+
     public function uploadTranslations(): void
     {
         foreach ($this->client->getLocales() as $locale) {
-            $this->uploadJsonFileIfExists($locale);
+            $this->uploadJsonFile($locale);
             $this->uploadPhpFiles($locale);
         }
     }
 
-    private function uploadJsonFileIfExists(string $locale): void
+    private function uploadJsonFile(string $locale): void
     {
         $filePath = $this->langPath.'/'.$locale.'.json';
         if ($this->fs->missing($filePath)) {
@@ -149,32 +155,5 @@ class LokaliseService
         }
 
         return $lokaliseTranslations;
-    }
-
-    private function replacePlaceholders(string $translation): string
-    {
-        $json = json_decode($translation, true);
-        if ($json && isset($json['one'], $json['other'])) {
-            $translation = $json['one'].'|'.$json['other'];
-        }
-        // I get these strings and need to convert it to colon prefix variable names:
-        // The [%1$s:attribute] field must be present when [%1$s:values] are present.
-        //The :attribute field must be present when :values are present.
-        $replaced = Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1')->__toString();
-
-        return $replaced;
-    }
-
-    private function isEmptyTranslation(string $translation): bool
-    {
-        if (empty($translation)) {
-            return true;
-        }
-        $json = json_decode($translation, true);
-        if ($json && isset($json['one'], $json['other']) && empty($json['one']) && empty($json['other'])) {
-            return true;
-        }
-
-        return false;
     }
 }

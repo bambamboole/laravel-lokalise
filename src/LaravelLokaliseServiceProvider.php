@@ -17,6 +17,7 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
             return new LokaliseService(
                 new LokaliseClient(
                     new LokaliseApiClient(config('lokalise.token')),
+                    new TranslationKeyFactory(),
                     config('lokalise.project_id'),
                 ),
                 new TranslationKeyTransformer(),
