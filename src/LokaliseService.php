@@ -17,10 +17,43 @@ class LokaliseService
 
     public function downloadTranslations(): void
     {
-        $files = $this->client->getFileNames();
+        $keys = $this->client->getKeys();
 
-        foreach ($files as $file) {
-            $keys = $this->client->getKeys($file);
+        $nonDottedKeys = array_filter($keys, fn ($key) => Str::contains($key, ' '), ARRAY_FILTER_USE_KEY);
+        $this->writeJsonFiles($nonDottedKeys);
+
+        $dottedKeys = array_filter($keys, fn ($key) => ! Str::contains($key, ' '), ARRAY_FILTER_USE_KEY);
+        $this->writePhpFiles($dottedKeys);
+    }
+
+    private function writeJsonFiles(array $keys): void
+    {
+        foreach ($this->client->getLocales() as $locale) {
+            $translations = [];
+            foreach ($keys as $key => $translationsForKey) {
+                if (! isset($translationsForKey[$locale]) || $this->isEmptyTranslation($translationsForKey[$locale])) {
+                    continue;
+                }
+                $translations[$key] = $this->replacePlaceholders($translationsForKey[$locale]);
+            }
+            if (empty($translations)) {
+                continue;
+            }
+            $path = sprintf('%s/%s.json', $this->langPath, $locale);
+            $beautifiedTranslations = json_encode($translations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
+            $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
+            $this->fs->put($path, $beautifiedTranslations);
+        }
+    }
+
+    private function writePhpFiles(array $keys): void
+    {
+        $groupedKeys = [];
+        foreach ($keys as $key => $translations) {
+            $groupedKeys[Str::before($key, '.')][$key] = $translations;
+        }
+
+        foreach ($groupedKeys as $group => $keys) {
             foreach ($this->client->getLocales() as $locale) {
                 $translations = [];
                 foreach ($keys as $key => $translationsForKey) {
@@ -32,16 +65,12 @@ class LokaliseService
                 if (empty($translations)) {
                     continue;
                 }
-                $translations = $this->transformDottedStringsToArray($translations);
-                $path = Str::replace('%LANG_ISO%', $locale, $file);
-                if (Str::endsWith($file, '.json')) {
-                    $beautifiedTranslations = json_encode($translations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
-                } else {
-                    $translations = $translations[array_key_first($translations)];
-                    $beautifiedTranslations = (new ArrayExporter)->export($translations);
-                }
-                $this->fs->ensureDirectoryExists(Str::beforeLast($this->basePath.'/'.$path, '/'));
-                $this->fs->put($this->basePath.'/'.$path, $beautifiedTranslations);
+                $translations = TranslationKeyTransformer::transformDottedToNested($translations);
+                $path = sprintf('%s/%s/%s.php', $this->langPath, $locale, $group);
+                $translations = $translations[$group];
+                $beautifiedTranslations = (new ArrayExporter)->export($translations);
+                $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
+                $this->fs->put($path, $beautifiedTranslations);
             }
         }
     }
@@ -131,29 +160,6 @@ class LokaliseService
         $replaced = Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1')->__toString();
 
         return $replaced;
-    }
-
-    private function transformDottedStringsToArray(array $dottedStrings): array
-    {
-        $result = [];
-
-        foreach ($dottedStrings as $dottedString => $translation) {
-            $keys = explode('.', $dottedString);
-            $current = &$result;
-
-            while (count($keys) > 1) {
-                $key = array_shift($keys);
-                if (! isset($current[$key])) {
-                    $current[$key] = [];
-                }
-                $current = &$current[$key];
-            }
-
-            $lastKey = array_shift($keys);
-            $current[$lastKey] = $translation;
-        }
-
-        return $result;
     }
 
     private function isEmptyTranslation(string $translation): bool
