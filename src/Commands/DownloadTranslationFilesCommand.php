@@ -15,9 +15,9 @@ class DownloadTranslationFilesCommand extends Command
     {
         $this->info('Download translations from Lokalise...');
         $report = $lokaliseService->downloadTranslations();
-        $this->info('Downloaded '.$report->getKeyCount().' keys from Lokalise');
-        $this->info('Dotted Keys    : '.$report->getDottedKeyCount());
-        $this->info('Non dotted Keys: '.$report->getNonDottedKeyCount());
+        $this->info('Downloaded '.$report->getLokaliseKeyCount().' keys from Lokalise');
+        $this->info('Extracted dotted Keys    : '.$report->getDottedKeyCount());
+        $this->info('Extracted non dotted Keys: '.$report->getNonDottedKeyCount());
         foreach ($report->getLocaleReports() as $localeReport) {
             $this->info('Downloaded translations for locale '.$localeReport->locale);
             if (count($localeReport->skippedKeys) > 0) {

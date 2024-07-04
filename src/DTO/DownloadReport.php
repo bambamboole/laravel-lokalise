@@ -8,8 +8,15 @@ class DownloadReport
 
     private int $nonDottedKeyCount = 0;
 
+    private int $lokaliseKeyCount = 0;
+
     /** @var LocaleReport[] */
     private array $localeReports = [];
+
+    public function addLokaliseKeyCount(int $lokaliseKeyCount): void
+    {
+        $this->lokaliseKeyCount = $lokaliseKeyCount;
+    }
 
     public function addKeyCount(int $dotted, int $nonDotted): void
     {
@@ -17,9 +24,9 @@ class DownloadReport
         $this->nonDottedKeyCount = $nonDotted;
     }
 
-    public function getKeyCount(): int
+    public function getLokaliseKeyCount(): int
     {
-        return $this->nonDottedKeyCount + $this->dottedKeyCount;
+        return $this->lokaliseKeyCount;
     }
 
     public function getDottedKeyCount(): int

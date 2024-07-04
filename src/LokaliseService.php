@@ -23,13 +23,40 @@ class LokaliseService
     {
         $report = new DownloadReport();
         $keys = $this->client->getKeys();
+        $report->addLokaliseKeyCount(count($keys));
 
-        $dottedKeys = array_filter($keys, fn (TranslationKey $key) => ! Str::contains($key->key, ' '));
+        $dottedKeys = array_filter($keys, function (TranslationKey $key) {
+            if (Str::contains($key->key, ' ')) {
+                return false;
+            }
+            if (! Str::contains($key->key, '.')) {
+                return false;
+            }
+            if (Str::substrCount($key->key, '.') === 1 && Str::endsWith($key->key, '.')) {
+                return false;
+            }
+
+            return true;
+        });
         $groupedKeys = [];
         foreach ($dottedKeys as $key) {
             $groupedKeys[Str::before($key->key, '.')][] = $key;
         }
-        $nonDottedKeys = array_filter($keys, fn (TranslationKey $key) => Str::contains($key->key, ' '));
+        $nonDottedKeys = array_values(array_filter($keys, function (TranslationKey $key) {
+            if (! Str::contains($key->key, ' ')) {
+                if (! Str::contains($key->key, '.')) {
+                    return true;
+                }
+                if (Str::substrCount($key->key, '.') === 1 && Str::endsWith($key->key, '.')) {
+                    return true;
+                }
+
+                return false;
+            }
+
+            return true;
+        }));
+
         $report->addKeyCount(count($dottedKeys), count($nonDottedKeys));
 
         foreach ($this->client->getLocales() as $locale) {
@@ -135,7 +162,12 @@ class LokaliseService
         $keys = array_keys($translations);
 
         for ($i = 0; $i < count($keys); $i++) {
-            $laravelKey = $keys[$i];
+            $laravelKey = (string) $keys[$i];
+            if ($laravelKey === '') {
+                dump($laravelKey, $translations);
+
+                continue;
+            }
             $i18nKey = preg_replace("/:([\w\d]+)/", '{{$1}}', $laravelKey);
             $laravelValue = $translations[$laravelKey];
 
