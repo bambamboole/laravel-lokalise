@@ -42,6 +42,7 @@ class LokaliseClientTest extends TestCase
             ->willReturn($this->mockResponse([
                 'keys' => [
                     [
+                        'key_id' => 1,
                         'key_name' => ['web' => 'test'],
                         'translations' => [
                             ['language_iso' => 'en', 'translation' => 'test'],
@@ -53,7 +54,7 @@ class LokaliseClientTest extends TestCase
         $client = $this->createSubject();
         $result = $client->getKeys('test');
 
-        $this->assertEquals([new TranslationKey('test', [new Translation('en', 'test')])], $result);
+        $this->assertEquals([new TranslationKey(1, 'test', [new Translation('en', 'test')])], $result);
     }
 
     public function testItResolvesPaginationWhileFetchingKeys()
@@ -66,6 +67,7 @@ class LokaliseClientTest extends TestCase
                     $keyCount = $counter->numberOfInvocations() === 3 ? 1 : 500;
                     $keys = array_map(
                         fn ($key) => [
+                            'key_id' => 0,
                             'key_name' => ['web' => "test-{$counter->numberOfInvocations()}-{$key}"],
                             'translations' => [
                                 ['language_iso' => 'en', 'translation' => 'test'],

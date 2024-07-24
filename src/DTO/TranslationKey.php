@@ -5,6 +5,7 @@ namespace Bambamboole\LaravelLokalise\DTO;
 class TranslationKey
 {
     public function __construct(
+        public readonly int $keyId,
         public readonly string $key,
         /** @var Translation[] */
         private readonly array $translations,
