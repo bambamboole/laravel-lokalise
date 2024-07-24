@@ -44,6 +44,7 @@ To upload your translations to Lokalise you can run the following command:
 ```bash 
 php artisan lokalise:upload
 ```
+You can add the `--cleanup` flag to remove all translations from Lokalise which are not in your project anymore.
 
 To download your translations from Lokalise you can run the following command:
 ```bash

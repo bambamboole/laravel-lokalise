@@ -99,6 +99,7 @@ class LokaliseClientTest extends TestCase
                 'replace_modified' => true,
                 'distinguish_by_file' => true,
                 'slashn_to_linebreak' => true,
+                'cleanup_mode' => true,
             ]);
 
         $client = $this->createSubject();
