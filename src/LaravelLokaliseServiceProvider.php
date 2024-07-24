@@ -17,11 +17,11 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
             return new LokaliseService(
                 new LokaliseClient(
                     new LokaliseApiClient(config('lokalise.token')),
-                    new TranslationKeyFactory(),
+                    new TranslationKeyFactory,
                     config('lokalise.project_id'),
                 ),
-                new TranslationKeyTransformer(),
-                new Filesystem(),
+                new TranslationKeyTransformer,
+                new Filesystem,
                 $app->langPath(),
                 $app->basePath(),
             );

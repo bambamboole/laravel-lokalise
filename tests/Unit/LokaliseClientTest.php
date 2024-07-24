@@ -139,6 +139,6 @@ class LokaliseClientTest extends TestCase
         $baseClient->files = $this->files;
         $baseClient->languages = $this->languages;
 
-        return new LokaliseClient($baseClient, new TranslationKeyFactory(), 'test');
+        return new LokaliseClient($baseClient, new TranslationKeyFactory, 'test');
     }
 }

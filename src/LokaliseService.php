@@ -21,7 +21,7 @@ class LokaliseService
 
     public function downloadTranslations(): DownloadReport
     {
-        $report = new DownloadReport();
+        $report = new DownloadReport;
         $keys = $this->client->getKeys();
         $report->addLokaliseKeyCount(count($keys));
 
