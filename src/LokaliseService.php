@@ -21,7 +21,7 @@ class LokaliseService
 
     public function downloadTranslations(): DownloadReport
     {
-        $report = new DownloadReport();
+        $report = new DownloadReport;
         $keys = $this->client->getKeys();
         $report->addLokaliseKeyCount(count($keys));
 
@@ -111,15 +111,17 @@ class LokaliseService
         $this->fs->put($path, $beautifiedTranslations);
     }
 
-    public function uploadTranslations(): void
+    public function uploadTranslations(bool $cleanup = true): void
     {
-        foreach ($this->client->getLocales() as $locale) {
-            $this->uploadJsonFile($locale);
-            $this->uploadPhpFiles($locale);
+        $locales = $this->client->getLocales();
+        $this->cleanupFiles($locales);
+        foreach ($locales as $locale) {
+            $this->uploadJsonFile($locale, $cleanup);
+            $this->uploadPhpFiles($locale, $cleanup);
         }
     }
 
-    private function uploadJsonFile(string $locale): void
+    private function uploadJsonFile(string $locale, bool $cleanup): void
     {
         $filePath = $this->langPath.'/'.$locale.'.json';
         if ($this->fs->missing($filePath)) {
@@ -131,20 +133,20 @@ class LokaliseService
             json_encode($translations),
             ltrim(str_replace($this->basePath, '', $filePath), '/'),
             $locale,
+            $cleanup,
         );
     }
 
-    private function uploadPhpFiles(string $locale): void
+    private function uploadPhpFiles(string $locale, bool $cleanup): void
     {
-        $localePath = $this->langPath.'/'.$locale;
-        if (! $this->fs->isDirectory($localePath)) {
+        $localPhpFiles = $this->getLocalPhpFiles($locale);
+        if (empty($localPhpFiles)) {
             return;
         }
-        $phpFiles = array_filter($this->fs->files($localePath), fn (\SplFileInfo $file) => $file->getExtension() === 'php');
 
-        foreach ($phpFiles as $file) {
-            $absoluteFilePath = $localePath.'/'.$file->getBasename();
-            $group = $file->getBasename('.php');
+        foreach ($localPhpFiles as $file) {
+            $absoluteFilePath = $this->langPath.'/'.$locale.'/'.$file;
+            $group = Str::before($file, '.php');
             $translations = require $absoluteFilePath;
             $translations = $this->prepare([$group => $translations]);
 
@@ -152,8 +154,34 @@ class LokaliseService
                 json_encode($translations),
                 ltrim(str_replace($this->basePath, '', $absoluteFilePath), '/'),
                 $locale,
+                $cleanup,
             );
         }
+    }
+
+    private function cleanupFiles(array $locales): void
+    {
+        $localPhpFiles = [];
+        foreach ($locales as $locale) {
+            $localPhpFiles = array_unique(array_merge($localPhpFiles, $this->getLocalPhpFiles($locale)));
+        }
+        $remotePhpFiles = $this->getRemotePhpFiles();
+
+        $filesToDelete = array_filter($remotePhpFiles, function (string $file) use ($localPhpFiles) {
+            return ! in_array(Str::afterLast($file, '/'), $localPhpFiles, true);
+        });
+
+        // Lokalise doesn't let us just delete the file and all referenced keys. We have to delete each key individually.
+        $keysToDelete = [];
+        foreach ($filesToDelete as $file) {
+            $keysToDelete = array_merge($keysToDelete, $this->client->getKeys($file));
+        }
+
+        if (empty($keysToDelete)) {
+            return;
+        }
+
+        $this->client->deleteKeys($keysToDelete);
     }
 
     private function prepare(array $translations): array
@@ -187,5 +215,31 @@ class LokaliseService
         }
 
         return $lokaliseTranslations;
+    }
+
+    private function getLocalPhpFiles(string $locale): array
+    {
+        $localePath = $this->langPath.'/'.$locale;
+        if (! $this->fs->isDirectory($localePath)) {
+            return [];
+        }
+
+        return array_map(
+            fn (\SplFileInfo $file) => $file->getBasename(),
+            array_filter(
+                $this->fs->files($localePath),
+                fn (\SplFileInfo $file) => $file->getExtension() === 'php',
+            )
+        );
+    }
+
+    private function getRemotePhpFiles(): array
+    {
+        $remotePhpFiles = array_filter(
+            $this->client->getFiles(),
+            fn (string $file) => Str::endsWith($file, '.php'),
+        );
+
+        return array_values($remotePhpFiles);
     }
 }

@@ -18,7 +18,7 @@ class TranslationKeyFactory
             ),
         );
 
-        return new TranslationKey($key, $translations);
+        return new TranslationKey($data['key_id'], $key, $translations);
     }
 
     private function prepareTranslation(string $locale, ?string $translation = null): ?Translation
