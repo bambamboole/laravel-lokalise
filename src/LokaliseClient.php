@@ -56,7 +56,7 @@ class LokaliseClient
             'lang_iso' => $locale,
             'format' => 'json',
             'convert_placeholders' => true,
-            'replace_modified' => true,
+            'replace_modified' => false,
             'distinguish_by_file' => true,
             'slashn_to_linebreak' => true,
             'cleanup_mode' => $cleanup,

@@ -114,10 +114,24 @@ class LokaliseService
     public function uploadTranslations(bool $cleanup = true): void
     {
         $locales = $this->client->getLocales();
-        $this->cleanupFiles($locales);
         foreach ($locales as $locale) {
             $this->uploadJsonFile($locale, $cleanup);
             $this->uploadPhpFiles($locale, $cleanup);
+        }
+        if ($cleanup === true) {
+            $this->cleanupFiles($locales);
+        }
+    }
+
+    public function uploadSpecificFiles(array $files, bool $cleanup = true): void
+    {
+        $jsonFiles = array_filter($files, fn (string $file) => Str::endsWith($file, '.json'));
+        foreach ($jsonFiles as $file) {
+            $this->uploadJsonFile(Str::before(Str::afterLast($file, '/'), '.json'), $cleanup);
+        }
+        $phpFiles = array_filter($files, fn (string $file) => Str::endsWith($file, '.php'));
+        foreach ($phpFiles as $file) {
+            $this->uploadPhpFile($file, $cleanup);
         }
     }
 
@@ -157,6 +171,26 @@ class LokaliseService
                 $cleanup,
             );
         }
+    }
+
+    private function uploadPhpFile(string $file, bool $cleanup = true): void
+    {
+        $absoluteFilePath = $this->basePath.'/'.$file;
+        if ($this->fs->missing($absoluteFilePath)) {
+            throw new \InvalidArgumentException("File $file not found.");
+        }
+        $locale = Str::afterLast(Str::beforeLast($file, '/'), '/');
+
+        $group = Str::between($file, $locale.'/', '.php');
+        $translations = require $absoluteFilePath;
+        $translations = $this->prepare([$group => $translations]);
+
+        $this->client->uploadFile(
+            json_encode($translations),
+            ltrim(str_replace($this->basePath, '', $absoluteFilePath), '/'),
+            $locale,
+            $cleanup,
+        );
     }
 
     private function cleanupFiles(array $locales): void
