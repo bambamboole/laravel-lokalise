@@ -47,7 +47,10 @@ php artisan lokalise:upload
 To upload only specific files You can add relative file path directly behind the command 
 ```bash
 php artisan lokalise:upload lang/en.json lang/en/validation.php
+# or for CI
+git diff --name-only | grep lang/ | xargs php artisan lokalise:upload
 ```
+
 You can add the `--cleanup` flag to remove all translations from Lokalise which are not in your project anymore.
 If you add it without specifying files it will also remove all keys from files which do not exist anymore
 
