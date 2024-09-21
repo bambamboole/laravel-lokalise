@@ -6,6 +6,8 @@ use Bambamboole\LaravelLokalise\DTO\DownloadReport;
 use Bambamboole\LaravelLokalise\DTO\LocaleReport;
 use Bambamboole\LaravelLokalise\DTO\TranslationKey;
 use Bambamboole\LaravelTranslationDumper\ArrayExporter;
+use Bambamboole\LaravelTranslationDumper\TranslationIdentifier;
+use Bambamboole\LaravelTranslationDumper\TranslationType;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 
@@ -25,37 +27,18 @@ class LokaliseService
         $keys = $this->client->getKeys();
         $report->addLokaliseKeyCount(count($keys));
 
-        $dottedKeys = array_filter($keys, function (TranslationKey $key) {
-            if (Str::contains($key->key, ' ')) {
-                return false;
-            }
-            if (! Str::contains($key->key, '.')) {
-                return false;
-            }
-            if (Str::substrCount($key->key, '.') === 1 && Str::endsWith($key->key, '.')) {
-                return false;
-            }
-
-            return true;
-        });
+        $dottedKeys = [];
+        $nonDottedKeys = [];
+        foreach ($keys as $key) {
+            match (TranslationIdentifier::identify($key->key)) {
+                TranslationType::PHP => $dottedKeys[] = $key,
+                TranslationType::JSON => $nonDottedKeys[] = $key,
+            };
+        }
         $groupedKeys = [];
         foreach ($dottedKeys as $key) {
             $groupedKeys[Str::before($key->key, '.')][] = $key;
         }
-        $nonDottedKeys = array_values(array_filter($keys, function (TranslationKey $key) {
-            if (! Str::contains($key->key, ' ')) {
-                if (! Str::contains($key->key, '.')) {
-                    return true;
-                }
-                if (Str::substrCount($key->key, '.') === 1 && Str::endsWith($key->key, '.')) {
-                    return true;
-                }
-
-                return false;
-            }
-
-            return true;
-        }));
 
         $report->addKeyCount(count($dottedKeys), count($nonDottedKeys));
 
