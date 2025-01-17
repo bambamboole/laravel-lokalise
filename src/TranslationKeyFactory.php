@@ -37,7 +37,7 @@ class TranslationKeyFactory
         }
         // I get these strings and need to convert it to colon prefix variable names:
         // The [%1$s:attribute] field must be present when [%1$s:values] are present.
-        //The :attribute field must be present when :values are present.
+        // The :attribute field must be present when :values are present.
         $translation = Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1')->__toString();
 
         return new Translation($locale, $translation);

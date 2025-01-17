@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 class TranslationKeyTransformerTest extends TestCase
 {
     /** @dataProvider dottedToNested */
-    public function testTransformDottedToNested(array $dotted, array $nested): void
+    public function test_transform_dotted_to_nested(array $dotted, array $nested): void
     {
         $result = (new TranslationKeyTransformer)->transformDottedToNested($dotted);
 
@@ -35,7 +35,7 @@ class TranslationKeyTransformerTest extends TestCase
         ];
     }
 
-    public function testItDropsInvalidKeysAndProvidesThemViaSkipped()
+    public function test_it_drops_invalid_keys_and_provides_them_via_skipped()
     {
         $transformer = new TranslationKeyTransformer;
         $nested = $transformer->transformDottedToNested(

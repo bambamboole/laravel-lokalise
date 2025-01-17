@@ -29,7 +29,7 @@ class LokaliseClientTest extends TestCase
         $this->languages = $this->createMock(Languages::class);
     }
 
-    public function testGetKeys()
+    public function test_get_keys()
     {
         $this->keys->expects(self::once())
             ->method('list')
@@ -57,7 +57,7 @@ class LokaliseClientTest extends TestCase
         $this->assertEquals([new TranslationKey(1, 'test', [new Translation('en', 'test')])], $result);
     }
 
-    public function testItResolvesPaginationWhileFetchingKeys()
+    public function test_it_resolves_pagination_while_fetching_keys()
     {
         $this->keys->expects($counter = self::exactly(3))
             ->method('list')
@@ -86,7 +86,7 @@ class LokaliseClientTest extends TestCase
         $this->assertCount(1001, $keys);
     }
 
-    public function testUploadFile()
+    public function test_upload_file()
     {
         $this->files->expects(self::once())
             ->method('upload')
@@ -106,7 +106,7 @@ class LokaliseClientTest extends TestCase
         $client->uploadFile('content', 'test.json', 'en');
     }
 
-    public function testGetLocales()
+    public function test_get_locales()
     {
         $this->languages->expects(self::once())
             ->method('list')
