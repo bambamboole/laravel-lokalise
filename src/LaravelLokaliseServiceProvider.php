@@ -22,8 +22,7 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
                 ),
                 new TranslationKeyTransformer,
                 new Filesystem,
-                $app->langPath(),
-                $app->basePath(),
+                config('lokalise.base_path'),
             );
         });
     }

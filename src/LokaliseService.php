@@ -13,13 +13,16 @@ use Illuminate\Support\Str;
 
 class LokaliseService
 {
+    private string $langPath;
+
     public function __construct(
         private readonly LokaliseClient $client,
         private readonly TranslationKeyTransformer $keyTransformer,
         private readonly Filesystem $fs,
-        private readonly string $langPath,
         private readonly string $basePath,
-    ) {}
+    ) {
+        $this->langPath = is_dir($dir = $this->basePath.'/resources/lang') ? $dir : $this->basePath.'/lang';
+    }
 
     public function downloadTranslations(): DownloadReport
     {
