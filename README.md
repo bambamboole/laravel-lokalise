@@ -69,6 +69,7 @@ composer test
 
 ### Ideas/Roadmap
 * Add more tests
+* Support nested files
 * Do not override existing lokal translations on lokalise:download. Update existing and keep new
 * Support multi pluralisation like `'apples' => '{0} There are none|[1,19] There are some|[20,*] There are many'`
 * Your idea here 
