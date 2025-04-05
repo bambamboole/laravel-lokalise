@@ -54,7 +54,11 @@ class LokaliseClientTest extends TestCase
         $client = $this->createSubject();
         $result = $client->getKeys('test');
 
-        $this->assertEquals([new TranslationKey(1, 'test', [new Translation('en', 'test')])], $result);
+        $firstKey = $result[0];
+        $this->assertInstanceOf(TranslationKey::class, $firstKey);
+        $this->assertEquals(1, $firstKey->keyId);
+        $this->assertEquals('test', $firstKey->key);
+        $this->assertEquals(new Translation('en', 'test'), $firstKey->getTranslationForLocale('en'));
     }
 
     public function test_it_resolves_pagination_while_fetching_keys()
@@ -122,6 +126,44 @@ class LokaliseClientTest extends TestCase
         $locales = $client->getLocales();
 
         $this->assertEquals(['en', 'de'], $locales);
+    }
+
+    public function test_get_files()
+    {
+        $this->files->expects(self::once())
+            ->method('list')
+            ->with('test')
+            ->willReturn($this->mockResponse(
+                [
+                    'project_id' => 'test',
+                    'files' => [
+                        [
+                            'file_id' => 33,
+                            'filename' => 'lang/%LANG_ISO%/modules.php',
+                            'key_count' => 420,
+                        ],
+                        [
+                            'file_id' => 36,
+                            'filename' => 'lang/%LANG_ISO%/validation.php',
+                            'key_count' => 666,
+                        ],
+                    ],
+                ]
+            ));
+
+        $files = $this->createSubject()->getFiles();
+
+        $this->assertCount(2, $files);
+        $this->assertEquals(['lang/%LANG_ISO%/modules.php', 'lang/%LANG_ISO%/validation.php'], $files);
+    }
+
+    public function test_delete_keys()
+    {
+        $this->keys->expects(self::once())
+            ->method('bulkDelete')
+            ->with('test', ['keys' => [1]]);
+
+        $this->createSubject()->deleteKeys([new TranslationKey(1, 'test', [], [])]);
     }
 
     private function mockResponse(array $data): LokaliseApiResponse|MockObject
