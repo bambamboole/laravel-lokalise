@@ -9,6 +9,7 @@ class TranslationKey
         public readonly string $key,
         /** @var Translation[] */
         private readonly array $translations,
+        public readonly array $raw,
     ) {}
 
     public function getTranslationForLocale(string $locale): ?Translation

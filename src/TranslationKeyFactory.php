@@ -14,11 +14,11 @@ class TranslationKeyFactory
         $translations = array_filter(
             array_map(
                 fn (array $translation) => $this->prepareTranslation($translation['language_iso'], $translation['translation']),
-                $data['translations'],
+                $data['translations'] ?? [],
             ),
         );
 
-        return new TranslationKey($data['key_id'], $key, $translations);
+        return new TranslationKey($data['key_id'], $key, $translations, $data);
     }
 
     private function prepareTranslation(string $locale, ?string $translation = null): ?Translation
