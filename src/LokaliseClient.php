@@ -15,11 +15,11 @@ class LokaliseClient
         private readonly string $projectId,
     ) {}
 
-    public function getKeys(?string $fileName = null): array
+    public function getKeys(?string $fileName = null, bool $includeTranslations = true): array
     {
         $options = [
             'limit' => 500,
-            'include_translations' => 1,
+            'include_translations' => $includeTranslations ? 1 : 0,
         ];
         if ($fileName !== null) {
             $options['filter_filenames'] = $fileName;
