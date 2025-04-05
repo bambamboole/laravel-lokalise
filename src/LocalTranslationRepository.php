@@ -2,6 +2,8 @@
 
 namespace Bambamboole\LaravelLokalise;
 
+use Bambamboole\LaravelLokalise\DTO\TranslationFile;
+use Bambamboole\LaravelTranslationDumper\TranslationType;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -35,24 +37,33 @@ class LocalTranslationRepository
         return array_unique(array_merge($localeFolders, $jsonFileLocales));
     }
 
-    public function getTranslationFiles(): array
+    /** @return TranslationFile[] */
+    public function getTranslationFiles(?string $locale = null, ?TranslationType $type = null): array
     {
         if (! $this->fs->isDirectory($this->langPath)) {
             return [];
         }
 
-        return $this->fs->allFiles($this->langPath);
+        $files = array_map(fn (\SplFileInfo $file) => new TranslationFile($file), $this->fs->allFiles($this->langPath));
+        if ($locale) {
+            $files = array_filter($files, fn (TranslationFile $file) => $file->locale() === $locale);
+        }
+        if ($type) {
+            $files = array_filter($files, fn (TranslationFile $file) => $file->type() === $type);
+        }
+
+        return $files;
     }
 
-    public function getTranslations(\SplFileInfo $file): array
+    public function getTranslations(TranslationFile $file): array
     {
-        if ($file->getExtension() === 'php') {
-            $group = Str::before($file->getFilename(), '.php');
-            $translations = require $file->getRealPath();
+        if ($file->type() === TranslationType::PHP) {
+            $group = Str::before($file->file->getFilename(), '.php');
+            $translations = require $file->file->getRealPath();
 
             return Arr::dot($translations, $group.'.');
         }
 
-        return json_decode($this->fs->get($file->getRealPath()), true);
+        return Arr::dot(json_decode($this->fs->get($file->file->getRealPath()), true));
     }
 }
