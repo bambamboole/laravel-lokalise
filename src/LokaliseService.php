@@ -212,8 +212,6 @@ class LokaliseService
         for ($i = 0; $i < count($keys); $i++) {
             $laravelKey = (string) $keys[$i];
             if ($laravelKey === '') {
-                dump($laravelKey, $translations);
-
                 continue;
             }
             $i18nKey = preg_replace("/:([\w\d]+)/", '{{$1}}', $laravelKey);
