@@ -48,7 +48,7 @@ class LokaliseClient
         return array_map(fn ($key) => $this->translationKeyFactory->createFromLokalise($key), $keys);
     }
 
-    public function uploadFile(string $content, string $filename, string $locale, bool $cleanup = true): void
+    public function uploadFile(string $content, string $filename, string $locale, bool $cleanup = true, bool $force = false): void
     {
         $this->apiClient->files->upload($this->projectId, [
             'data' => base64_encode($content),
@@ -56,7 +56,7 @@ class LokaliseClient
             'lang_iso' => $locale,
             'format' => 'json',
             'convert_placeholders' => true,
-            'replace_modified' => false,
+            'replace_modified' => $force,
             'distinguish_by_file' => true,
             'slashn_to_linebreak' => true,
             'cleanup_mode' => $cleanup,
