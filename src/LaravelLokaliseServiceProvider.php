@@ -28,6 +28,7 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
                 $app->make(LokaliseClient::class),
                 new TranslationKeyTransformer,
                 new Filesystem,
+                $app->make(LocalTranslationRepository::class),
                 config('lokalise.base_path'),
             );
         });
