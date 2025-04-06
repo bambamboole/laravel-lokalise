@@ -4,12 +4,14 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/bambamboole/laravel-lokalise.svg?style=flat-square)](https://packagist.org/packages/bambamboole/laravel-lokalise)
 ![GitHub Actions](https://github.com/bambamboole/laravel-lokalise/actions/workflows/main.yml/badge.svg)
 
+This package provides a simple way to sync your Laravel translations with Lokalise without changing
+anything in your translations nor in your lokalise settings. It just works!
+
 Lokalise states, that they support Laravel translations, but out of the box this is not the case.  
 They do not support Laravels placeholders and also not its pluralization. In Laravel it is also
 common to use two translation files. Multiple PHP files per locale which contain nested keys and
 also one JSON file per locale which uses the base locale as key.  
-This package provides a simple way to sync your Laravel translations with Lokalise without changing 
-anything in your translations nor in your lokalise settings. It just works!
+
 
 ## How does it work?
 The package does a few things to give the best out-of-the-box experience.  
