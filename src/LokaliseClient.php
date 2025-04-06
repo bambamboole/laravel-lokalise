@@ -2,7 +2,7 @@
 
 namespace Bambamboole\LaravelLokalise;
 
-use Bambamboole\LaravelLokalise\DTO\TranslationKey;
+use Bambamboole\LaravelLokalise\Models\Translation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Lokalise\Exceptions\LokaliseResponseException;
@@ -15,7 +15,6 @@ class LokaliseClient
 
     public function __construct(
         private readonly LokaliseApiClient $apiClient,
-        private readonly TranslationKeyFactory $translationKeyFactory,
         private readonly string $projectId,
     ) {}
 
@@ -27,11 +26,11 @@ class LokaliseClient
         return $this;
     }
 
-    public function getKeys(?string $fileName = null, bool $includeTranslations = true): array
+    public function getTranslations(?string $fileName = null): Collection
     {
         $options = [
             'limit' => 500,
-            'include_translations' => $includeTranslations ? 1 : 0,
+            'include_translations' => true,
         ];
         if ($fileName !== null) {
             $options['filter_filenames'] = $fileName;
@@ -54,24 +53,28 @@ class LokaliseClient
             // Lokalise throws an error if you want to list keys for a non-existing file
             // We will catch that and just return an empty array
             if (Str::contains($e->getMessage(), '`filter_filenames` parameter has invalid values')) {
-                return [];
+                return collect();
             }
             throw $e;
         }
         $this->progressBar?->finish();
         $this->progressBar = null;
 
-        return array_map(fn ($key) => $this->translationKeyFactory->createFromLokalise($key), $keys);
+        $translations = collect();
+        foreach ($keys as $data) {
+            $key = Str::replace('::', '.', $data['key_name']['web']);
+            $translations = $translations->merge(
+                array_map(
+                    fn (array $translation) => $this->prepareTranslation($translation['language_iso'], $key, $translation['translation']),
+                    $data['translations'] ?? [],
+                )
+            );
+        }
+
+        return $translations->filter();
     }
 
-    public function getTranslations(?string $fileName = null): Collection
-    {
-        return collect($this->getKeys($fileName))
-            ->map(fn (TranslationKey $key) => $key->translations)
-            ->flatten();
-    }
-
-    public function uploadFile(string $content, string $filename, string $locale, bool $cleanup = true, bool $force = false): void
+    public function uploadFile(string $content, string $filename, string $locale, bool $cleanup = true, bool $replace = false): void
     {
         $this->apiClient->files->upload($this->projectId, [
             'data' => base64_encode($content),
@@ -79,7 +82,7 @@ class LokaliseClient
             'lang_iso' => $locale,
             'format' => 'json',
             'convert_placeholders' => true,
-            'replace_modified' => $force,
+            'replace_modified' => $replace,
             'distinguish_by_file' => true,
             'slashn_to_linebreak' => true,
             'cleanup_mode' => $cleanup,
@@ -107,7 +110,6 @@ class LokaliseClient
         return array_sum(array_map(fn ($file) => $file['key_count'], $result->body['files']));
     }
 
-    /** @param TranslationKey[] $keys */
     public function deleteKeys(array $keys): void
     {
         $this->apiClient
@@ -115,8 +117,30 @@ class LokaliseClient
             ->bulkDelete(
                 $this->projectId,
                 [
-                    'keys' => array_map(fn (TranslationKey $key) => $key->keyId, $keys),
+                    'keys' => $keys,
                 ],
             );
+    }
+
+    private function prepareTranslation(string $locale, string $key, ?string $translation = null): ?Translation
+    {
+        if (empty($translation)) {
+            return null;
+        }
+
+        // Check if the translation is a plural translation and map it to a Laravel compatible format
+        $json = json_decode($translation, true);
+        if ($json && isset($json['one'], $json['other'])) {
+            if (empty($json['one']) && empty($json['other'])) {
+                return null;
+            }
+            $translation = $json['one'].'|'.$json['other'];
+        }
+        // I get these strings and need to convert it to colon prefix variable names:
+        // The [%1$s:attribute] field must be present when [%1$s:values] are present.
+        // The :attribute field must be present when :values are present.
+        $translation = Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1')->__toString();
+
+        return new Translation($locale, $key, $translation);
     }
 }
