@@ -98,9 +98,9 @@ class LocalTranslationRepository
                     $this->fs->put($absolutePath, (new ArrayExporter)->export($nested));
                     $dotted = Arr::dot($nested);
                     $skippedKeys = [];
+                    $group = Str::between($file, '/', '.php');
                     foreach ($merged as $key => $value) {
-
-                        ! isset($dotted[$key]) && $skippedKeys[$key] = $value;
+                        ! isset($dotted[$key]) && $skippedKeys[$group.'.'.$key] = $value;
                     }
 
                     return $skippedKeys;
