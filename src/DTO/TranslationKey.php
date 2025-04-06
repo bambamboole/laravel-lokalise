@@ -8,7 +8,7 @@ class TranslationKey
         public readonly int $keyId,
         public readonly string $key,
         /** @var Translation[] */
-        private readonly array $translations,
+        public readonly array $translations,
         public readonly array $raw,
     ) {}
 

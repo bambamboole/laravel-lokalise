@@ -2,14 +2,13 @@
 
 namespace Bambamboole\LaravelLokalise;
 
-use Bambamboole\LaravelLokalise\DTO\DownloadReport;
-use Bambamboole\LaravelLokalise\DTO\LocaleReport;
+use Bambamboole\LaravelLokalise\Commands\DownloadTranslationFilesCommand;
+use Bambamboole\LaravelLokalise\DTO\Translation;
 use Bambamboole\LaravelLokalise\DTO\TranslationFile;
-use Bambamboole\LaravelLokalise\DTO\TranslationKey;
 use Bambamboole\LaravelTranslationDumper\ArrayExporter;
-use Bambamboole\LaravelTranslationDumper\TranslationIdentifier;
 use Bambamboole\LaravelTranslationDumper\TranslationType;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class LokaliseService
@@ -26,77 +25,32 @@ class LokaliseService
         $this->langPath = is_dir($dir = $this->basePath.'/resources/lang') ? $dir : $this->basePath.'/lang';
     }
 
-    public function downloadTranslations(): DownloadReport
+    public function downloadTranslations(DownloadTranslationFilesCommand $command): void
     {
-        $report = new DownloadReport;
-        $keys = $this->client->getKeys();
-        $report->addLokaliseKeyCount(count($keys));
+        $command->getComponents()->info('Download translation...');
 
-        $dottedKeys = [];
-        $nonDottedKeys = [];
-        foreach ($keys as $key) {
-            match (TranslationIdentifier::identify($key->key)) {
-                TranslationType::PHP => $dottedKeys[] = $key,
-                TranslationType::JSON => $nonDottedKeys[] = $key,
+        $translations = $this->client
+            ->withProgressbar($command->getOutput()->createProgressBar())
+            ->getTranslations();
+        $command->getComponents()->info(sprintf('%s translations downloaded', $translations->count()));
+
+        $files = $translations->groupBy(fn (Translation $translation) => $translation->getFilename());
+        $command->getComponents()->info(sprintf('processing %s files', $files->count()));
+
+        $files->each(function (Collection $translations, string $filename) {
+            $content = $translations
+                ->mapWithKeys(fn (Translation $translation) => [$translation->keyInFile() => $translation->value])
+                ->toArray();
+
+            $content = match (Str::afterLast($filename, '.')) {
+                'php' => (new ArrayExporter)->export($this->keyTransformer->transformDottedToNested($content)),
+                'json' => json_encode($content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL
             };
-        }
-        $groupedKeys = [];
-        foreach ($dottedKeys as $key) {
-            $groupedKeys[Str::before($key->key, '.')][] = $key;
-        }
 
-        $report->addKeyCount(count($dottedKeys), count($nonDottedKeys));
-
-        foreach ($this->client->getLocales() as $locale) {
-            $this->writePhpFiles($locale, $groupedKeys);
-            $this->writeJsonFile($locale, $nonDottedKeys);
-            $report->addLocaleReport(new LocaleReport($locale, $this->keyTransformer->getSkipped()));
-        }
-
-        return $report;
-    }
-
-    private function writePhpFiles(string $locale, array $groupedKeys): void
-    {
-        foreach ($groupedKeys as $group => $keys) {
-            $translations = [];
-            foreach ($keys as $key) {
-                /** @var TranslationKey $key */
-                $translation = $key->getTranslationForLocale($locale);
-                if (! $translation) {
-                    continue;
-                }
-                $translations[$key->key] = $translation->value;
-            }
-            if (empty($translations)) {
-                continue;
-            }
-            $translations = $this->keyTransformer->transformDottedToNested($translations);
-            $path = sprintf('%s/%s/%s.php', $this->langPath, $locale, $group);
-            $translations = $translations[$group];
-            $beautifiedTranslations = (new ArrayExporter)->export($translations);
-            $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
-            $this->fs->put($path, $beautifiedTranslations);
-        }
-    }
-
-    private function writeJsonFile(string $locale, array $keys): void
-    {
-        foreach ($keys as $key) {
-            /** @var TranslationKey $key */
-            $translation = $key->getTranslationForLocale($locale);
-            if (! $translation) {
-                continue;
-            }
-            $translations[$key->key] = $translation->value;
-        }
-        if (empty($translations)) {
-            return;
-        }
-        $path = sprintf('%s/%s.json', $this->langPath, $locale);
-        $beautifiedTranslations = json_encode($translations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
-        $this->fs->ensureDirectoryExists(Str::beforeLast($path, '/'));
-        $this->fs->put($path, $beautifiedTranslations);
+            $absolutePath = $this->langPath.'/'.$filename;
+            $this->fs->ensureDirectoryExists(Str::beforeLast($absolutePath, '/'));
+            $this->fs->put($absolutePath, $content);
+        });
     }
 
     public function uploadTranslations(bool $cleanup = true, bool $force = false): void
@@ -110,7 +64,7 @@ class LokaliseService
             }
         }
         if ($cleanup === true) {
-            $this->cleanupFiles($locales);
+            $this->cleanupFiles();
         }
     }
 
@@ -137,7 +91,7 @@ class LokaliseService
         );
     }
 
-    private function cleanupFiles(array $locales): void
+    private function cleanupFiles(): void
     {
         $fileNames = array_unique(
             array_map(
@@ -145,27 +99,19 @@ class LokaliseService
                 $this->repository->getTranslationFiles(type: TranslationType::PHP),
             )
         );
-        foreach ($locales as $locale) {
-            $localPhpFiles = array_unique(array_merge($localPhpFiles, $this->repo($locale)));
-        }
-        $remotePhpFiles = $this->getRemotePhpFiles();
-
-        $filesToDelete = array_filter(
-            $remotePhpFiles,
-            fn (string $file) => ! in_array(Str::afterLast($file, '/'), $fileNames, true),
-        );
 
         // Lokalise doesn't let us just delete the file and all referenced keys. We have to delete each key individually.
-        $keysToDelete = [];
-        foreach ($filesToDelete as $file) {
-            $keysToDelete = array_merge($keysToDelete, $this->client->getKeys($file));
-        }
+        $keysToDelete = $this->getRemotePhpFiles()
+            ->filter(fn (string $file) => ! in_array(Str::afterLast($file, '/'), $fileNames, true))
+            ->map(fn (string $file) => $this->client->getTranslations($file)->map(fn (Translation $translation) => $translation->key))
+            ->flatten()
+            ->unique();
 
-        if (empty($keysToDelete)) {
+        if ($keysToDelete->isEmpty()) {
             return;
         }
 
-        $this->client->deleteKeys($keysToDelete);
+        $this->client->deleteKeys($keysToDelete->all());
     }
 
     private function prepare(array $translations): array
@@ -188,13 +134,13 @@ class LokaliseService
         return $lokaliseTranslations;
     }
 
-    private function getRemotePhpFiles(): array
+    private function getRemotePhpFiles(): Collection
     {
         $remotePhpFiles = array_filter(
             $this->client->getFiles(),
             fn (string $file) => Str::endsWith($file, '.php'),
         );
 
-        return array_values($remotePhpFiles);
+        return collect(array_values($remotePhpFiles));
     }
 }

@@ -58,7 +58,7 @@ class LokaliseClientTest extends TestCase
         $this->assertInstanceOf(TranslationKey::class, $firstKey);
         $this->assertEquals(1, $firstKey->keyId);
         $this->assertEquals('test', $firstKey->key);
-        $this->assertEquals(new Translation('en', 'test'), $firstKey->getTranslationForLocale('en'));
+        $this->assertEquals(new Translation('en', 'test', 'test'), $firstKey->getTranslationForLocale('en'));
     }
 
     public function test_it_resolves_pagination_while_fetching_keys()

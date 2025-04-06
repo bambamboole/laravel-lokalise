@@ -4,6 +4,7 @@ namespace Bambamboole\LaravelLokalise\Commands;
 
 use Bambamboole\LaravelLokalise\LokaliseService;
 use Illuminate\Console\Command;
+use Illuminate\Console\View\Components\Factory;
 
 class DownloadTranslationFilesCommand extends Command
 {
@@ -14,18 +15,13 @@ class DownloadTranslationFilesCommand extends Command
     public function handle(LokaliseService $lokaliseService): int
     {
         $this->info('Download translations from Lokalise...');
-        $report = $lokaliseService->downloadTranslations();
-        $this->info('Downloaded '.$report->getLokaliseKeyCount().' keys from Lokalise');
-        $this->info('Extracted dotted Keys    : '.$report->getDottedKeyCount());
-        $this->info('Extracted non dotted Keys: '.$report->getNonDottedKeyCount());
-        foreach ($report->getLocaleReports() as $localeReport) {
-            $this->info('Downloaded translations for locale '.$localeReport->locale);
-            if (count($localeReport->skippedKeys) > 0) {
-                $this->info('Skipped keys: '.count($localeReport->skippedKeys));
-                $this->table(['key', 'value', 'reason'], $localeReport->skippedKeys);
-            }
-        }
+        $lokaliseService->downloadTranslations($this);
 
         return self::SUCCESS;
+    }
+
+    public function getComponents(): Factory
+    {
+        return $this->components;
     }
 }

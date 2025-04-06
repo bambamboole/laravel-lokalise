@@ -13,7 +13,7 @@ class TranslationKeyFactory
         $key = Str::replace('::', '.', $data['key_name']['web']);
         $translations = array_filter(
             array_map(
-                fn (array $translation) => $this->prepareTranslation($translation['language_iso'], $translation['translation']),
+                fn (array $translation) => $this->prepareTranslation($translation['language_iso'], $key, $translation['translation']),
                 $data['translations'] ?? [],
             ),
         );
@@ -21,7 +21,7 @@ class TranslationKeyFactory
         return new TranslationKey($data['key_id'], $key, $translations, $data);
     }
 
-    private function prepareTranslation(string $locale, ?string $translation = null): ?Translation
+    private function prepareTranslation(string $locale, string $key, ?string $translation = null): ?Translation
     {
         if (empty($translation)) {
             return null;
@@ -40,6 +40,6 @@ class TranslationKeyFactory
         // The :attribute field must be present when :values are present.
         $translation = Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1')->__toString();
 
-        return new Translation($locale, $translation);
+        return new Translation($locale, $key, $translation);
     }
 }

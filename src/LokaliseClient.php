@@ -3,17 +3,29 @@
 namespace Bambamboole\LaravelLokalise;
 
 use Bambamboole\LaravelLokalise\DTO\TranslationKey;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Lokalise\Exceptions\LokaliseResponseException;
 use Lokalise\LokaliseApiClient;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 class LokaliseClient
 {
+    private ?ProgressBar $progressBar = null;
+
     public function __construct(
         private readonly LokaliseApiClient $apiClient,
         private readonly TranslationKeyFactory $translationKeyFactory,
         private readonly string $projectId,
     ) {}
+
+    public function withProgressbar(ProgressBar $progressBar): self
+    {
+        $this->progressBar = $progressBar;
+        $this->progressBar->setMaxSteps((int) ($this->getLokaliseKeyCount() / 500));
+
+        return $this;
+    }
 
     public function getKeys(?string $fileName = null, bool $includeTranslations = true): array
     {
@@ -28,6 +40,7 @@ class LokaliseClient
         $keys = [];
         $page = 0;
         try {
+            $this->progressBar?->start();
 
             do {
                 $page++;
@@ -35,6 +48,7 @@ class LokaliseClient
                 $result = $this->apiClient->keys->list($this->projectId, $options);
                 $newKeys = $result->body['keys'];
                 $keys = array_merge($keys, $newKeys);
+                $this->progressBar?->advance();
             } while (count($newKeys) === 500);
         } catch (LokaliseResponseException $e) {
             // Lokalise throws an error if you want to list keys for a non-existing file
@@ -44,8 +58,17 @@ class LokaliseClient
             }
             throw $e;
         }
+        $this->progressBar?->finish();
+        $this->progressBar = null;
 
         return array_map(fn ($key) => $this->translationKeyFactory->createFromLokalise($key), $keys);
+    }
+
+    public function getTranslations(?string $fileName = null): Collection
+    {
+        return collect($this->getKeys($fileName))
+            ->map(fn (TranslationKey $key) => $key->translations)
+            ->flatten();
     }
 
     public function uploadFile(string $content, string $filename, string $locale, bool $cleanup = true, bool $force = false): void
@@ -72,9 +95,16 @@ class LokaliseClient
 
     public function getFiles(): array
     {
-        $result = $this->apiClient->files->list($this->projectId);
+        $result = $this->apiClient->files->list($this->projectId, ['limit' => 5000]);
 
         return array_map(fn ($file) => $file['filename'], $result->body['files']);
+    }
+
+    public function getLokaliseKeyCount(): int
+    {
+        $result = $this->apiClient->files->list($this->projectId, ['limit' => 5000]);
+
+        return array_sum(array_map(fn ($file) => $file['key_count'], $result->body['files']));
     }
 
     /** @param TranslationKey[] $keys */
