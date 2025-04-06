@@ -3,64 +3,41 @@
 namespace Bambamboole\LaravelLokalise;
 
 use Bambamboole\LaravelLokalise\Commands\DownloadTranslationFilesCommand;
-use Bambamboole\LaravelLokalise\DTO\Translation;
-use Bambamboole\LaravelLokalise\DTO\TranslationFile;
-use Bambamboole\LaravelTranslationDumper\ArrayExporter;
+use Bambamboole\LaravelLokalise\Models\Translation;
+use Bambamboole\LaravelLokalise\Models\TranslationFile;
 use Bambamboole\LaravelTranslationDumper\TranslationType;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class LokaliseService
 {
-    private string $langPath;
-
     public function __construct(
         private readonly LokaliseClient $client,
-        private readonly TranslationKeyTransformer $keyTransformer,
-        private readonly Filesystem $fs,
         private readonly LocalTranslationRepository $repository,
         private readonly string $basePath,
-    ) {
-        $this->langPath = is_dir($dir = $this->basePath.'/resources/lang') ? $dir : $this->basePath.'/lang';
-    }
+    ) {}
 
     public function downloadTranslations(DownloadTranslationFilesCommand $command): void
     {
         $command->getComponents()->info('Download translation...');
 
-        $translations = $this->client
+        $translations = Cache::remember('foo', 300, fn () => $this->client
             ->withProgressbar($command->getOutput()->createProgressBar())
-            ->getTranslations();
+            ->getTranslations());
         $command->getComponents()->info(sprintf('%s translations downloaded', $translations->count()));
 
-        $files = $translations->groupBy(fn (Translation $translation) => $translation->getFilename());
-        $command->getComponents()->info(sprintf('processing %s files', $files->count()));
-
-        $files->each(function (Collection $translations, string $filename) {
-            $content = $translations
-                ->mapWithKeys(fn (Translation $translation) => [$translation->keyInFile() => $translation->value])
-                ->toArray();
-
-            $content = match (Str::afterLast($filename, '.')) {
-                'php' => (new ArrayExporter)->export($this->keyTransformer->transformDottedToNested($content)),
-                'json' => json_encode($content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL
-            };
-
-            $absolutePath = $this->langPath.'/'.$filename;
-            $this->fs->ensureDirectoryExists(Str::beforeLast($absolutePath, '/'));
-            $this->fs->put($absolutePath, $content);
-        });
+        $this->repository->saveTranslations($translations);
     }
 
-    public function uploadTranslations(bool $cleanup = true, bool $force = false): void
+    public function uploadTranslations(bool $cleanup = true, bool $replace = false): void
     {
         $locales = $this->client->getLocales();
 
         foreach ($locales as $locale) {
             $files = $this->repository->getTranslationFiles($locale);
             foreach ($files as $file) {
-                $this->uploadFile($file, $cleanup, $force);
+                $this->uploadFile($file, $cleanup, $replace);
             }
         }
         if ($cleanup === true) {
@@ -68,16 +45,16 @@ class LokaliseService
         }
     }
 
-    public function uploadSpecificFiles(array $files, bool $cleanup = true, bool $force = true): void
+    public function uploadSpecificFiles(array $files, bool $cleanup = true, bool $replace = true): void
     {
         $translationFiles = $this->repository->getTranslationFiles();
         $foundFiles = array_filter($translationFiles, fn (TranslationFile $tf) => in_array($tf->file->getRealPath(), $files));
         foreach ($foundFiles as $file) {
-            $this->uploadFile($file, $cleanup, $force);
+            $this->uploadFile($file, $cleanup, $replace);
         }
     }
 
-    private function uploadFile(TranslationFile $file, bool $cleanup, bool $force): void
+    private function uploadFile(TranslationFile $file, bool $cleanup, bool $replace): void
     {
         $translations = $this->repository->getTranslations($file);
         $translations = $this->prepare($translations);
@@ -87,7 +64,7 @@ class LokaliseService
             ltrim(str_replace($this->basePath, '', $file->file->getRealPath()), '/'),
             $file->locale(),
             $cleanup,
-            $force
+            $replace
         );
     }
 

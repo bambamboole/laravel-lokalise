@@ -2,9 +2,9 @@
 
 namespace Bambamboole\LaravelLokalise\Commands;
 
-use Bambamboole\LaravelLokalise\DTO\Translation;
 use Bambamboole\LaravelLokalise\LocalTranslationRepository;
 use Bambamboole\LaravelLokalise\LokaliseClient;
+use Bambamboole\LaravelLokalise\Models\Translation;
 use Illuminate\Console\Command;
 
 class InfoCommand extends Command

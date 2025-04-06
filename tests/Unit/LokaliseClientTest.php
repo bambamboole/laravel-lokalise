@@ -2,10 +2,8 @@
 
 namespace Bambamboole\LaravelLokalise\Tests\Unit;
 
-use Bambamboole\LaravelLokalise\DTO\Translation;
-use Bambamboole\LaravelLokalise\DTO\TranslationKey;
 use Bambamboole\LaravelLokalise\LokaliseClient;
-use Bambamboole\LaravelLokalise\TranslationKeyFactory;
+use Bambamboole\LaravelLokalise\Models\Translation;
 use Lokalise\Endpoints\Files;
 use Lokalise\Endpoints\Keys;
 use Lokalise\Endpoints\Languages;
@@ -29,13 +27,13 @@ class LokaliseClientTest extends TestCase
         $this->languages = $this->createMock(Languages::class);
     }
 
-    public function test_get_keys()
+    public function test_get_translations()
     {
         $this->keys->expects(self::once())
             ->method('list')
             ->with('test', [
                 'filter_filenames' => 'test',
-                'include_translations' => 1,
+                'include_translations' => true,
                 'limit' => 500,
                 'page' => 1,
             ])
@@ -52,13 +50,11 @@ class LokaliseClientTest extends TestCase
             ]));
 
         $client = $this->createSubject();
-        $result = $client->getKeys('test');
+        $translations = $client->getTranslations('test');
 
-        $firstKey = $result[0];
-        $this->assertInstanceOf(TranslationKey::class, $firstKey);
-        $this->assertEquals(1, $firstKey->keyId);
-        $this->assertEquals('test', $firstKey->key);
-        $this->assertEquals(new Translation('en', 'test', 'test'), $firstKey->getTranslationForLocale('en'));
+        $firstTranslation = $translations[0];
+        $this->assertInstanceOf(Translation::class, $firstTranslation);
+        $this->assertEquals(new Translation('en', 'test', 'test'), $firstTranslation);
     }
 
     public function test_it_resolves_pagination_while_fetching_keys()
@@ -85,9 +81,9 @@ class LokaliseClientTest extends TestCase
             );
 
         $client = $this->createSubject();
-        $keys = $client->getKeys('test');
+        $translations = $client->getTranslations('test');
 
-        $this->assertCount(1001, $keys);
+        $this->assertCount(1001, $translations);
     }
 
     public function test_upload_file()
@@ -163,7 +159,7 @@ class LokaliseClientTest extends TestCase
             ->method('bulkDelete')
             ->with('test', ['keys' => [1]]);
 
-        $this->createSubject()->deleteKeys([new TranslationKey(1, 'test', [], [])]);
+        $this->createSubject()->deleteKeys([1]);
     }
 
     private function mockResponse(array $data): LokaliseApiResponse|MockObject
@@ -181,6 +177,6 @@ class LokaliseClientTest extends TestCase
         $baseClient->files = $this->files;
         $baseClient->languages = $this->languages;
 
-        return new LokaliseClient($baseClient, new TranslationKeyFactory, 'test');
+        return new LokaliseClient($baseClient, 'test');
     }
 }

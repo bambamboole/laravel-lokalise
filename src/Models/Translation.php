@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Bambamboole\LaravelLokalise\DTO;
+namespace Bambamboole\LaravelLokalise\Models;
 
 use Bambamboole\LaravelTranslationDumper\TranslationIdentifier;
 use Bambamboole\LaravelTranslationDumper\TranslationType;

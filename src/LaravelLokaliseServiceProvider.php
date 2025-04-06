@@ -20,14 +20,11 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
         ));
         $this->app->singleton(LokaliseClient::class, fn () => new LokaliseClient(
             new LokaliseApiClient(config('lokalise.token')),
-            new TranslationKeyFactory,
             config('lokalise.project_id'),
         ));
         $this->app->singleton(LokaliseService::class, function (Application $app) {
             return new LokaliseService(
                 $app->make(LokaliseClient::class),
-                new TranslationKeyTransformer,
-                new Filesystem,
                 $app->make(LocalTranslationRepository::class),
                 config('lokalise.base_path'),
             );

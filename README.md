@@ -10,19 +10,21 @@ anything in your translations nor in your lokalise settings. It just works!
 Lokalise states, that they support Laravel translations, but out of the box this is not the case.  
 They do not support Laravels placeholders and also not its pluralization. In Laravel it is also
 common to use two translation files. Multiple PHP files per locale which contain nested keys and
-also one JSON file per locale which uses the base locale as key.  
-
+also one JSON file per locale which uses the base locale as key.
 
 ## How does it work?
+
 The package does a few things to give the best out-of-the-box experience.  
 It checks your JSON and PHP translations separately.   
 Dotted translation keys will get prefixed by the file name.  
-The translations are then processed on the fly to convert placeholders and pluralization to Lokalise compatible formats.  
+The translations are then processed on the fly to convert placeholders and pluralization to Lokalise compatible
+formats.  
 It then uploads the files to Lokalise.  
 Downloading translations works a bit different since Lokalise converts the placeholders to a non-reversible format
 when downloading whole files.
-Therefor the package makes usage of the translation keys API to fetch keys file per file. Before it dumps
-the keys into their respective files, it converts the placeholders back to the Laravel format.
+Therefor the package makes usage of the translation keys API instead of the files API. It fetches all keys, converts the
+placeholders back to the Laravel format and then groups them per locale and file. Instead if just dumping the files it
+always merges them with the local files. Any leaf node collisions will be resolved and moved to the JSON file.
 
 ## Installation
 
@@ -40,23 +42,30 @@ LOKALISE_PROJECT_ID=your-lokalise-project-id
 ```
 
 ## Usage
-The package is still in its early development and therefor pretty opinionated and not very flexible.  
+
+The package is still in its early development and therefor pretty opinionated and not very flexible.
 
 To upload your translations to Lokalise you can run the following command:
+
 ```bash 
 php artisan lokalise:upload
 ```
-To upload only specific files You can add relative file path directly behind the command 
+
+To upload only specific files You can add relative file path directly behind the command
+
 ```bash
 php artisan lokalise:upload lang/en.json lang/en/validation.php
 # or for CI
 git diff --name-only | grep lang/ | xargs php artisan lokalise:upload
 ```
 
+The `--replace` flag will set `replace_modified` on the [API](https://developers.lokalise.com/reference/upload-a-file) to `true`.
+
 You can add the `--cleanup` flag to remove all translations from Lokalise which are not in your project anymore.
 If you add it without specifying files it will also remove all keys from files which do not exist anymore
 
 To download your translations from Lokalise you can run the following command:
+
 ```bash
 php artisan lokalise:download
 ```
@@ -70,11 +79,11 @@ composer test
 ## Contributing
 
 ### Ideas/Roadmap
+
 * Add more tests
 * Support nested files
-* Do not override existing lokal translations on lokalise:download. Update existing and keep new
 * Support multi pluralisation like `'apples' => '{0} There are none|[1,19] There are some|[20,*] There are many'`
-* Your idea here 
+* Your idea here
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
@@ -84,8 +93,8 @@ If you discover any security related issues, please email manuel@christlieb.eu i
 
 ## Credits
 
--   [Manuel Christlieb](https://github.com/bambamboole)
--   [All Contributors](../../contributors)
+- [Manuel Christlieb](https://github.com/bambamboole)
+- [All Contributors](../../contributors)
 
 ## License
 
