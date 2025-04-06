@@ -7,7 +7,6 @@ use Bambamboole\LaravelLokalise\Models\Translation;
 use Bambamboole\LaravelLokalise\Models\TranslationFile;
 use Bambamboole\LaravelTranslationDumper\TranslationType;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class LokaliseService
@@ -22,9 +21,9 @@ class LokaliseService
     {
         $command->getComponents()->info('Download translation...');
 
-        $translations = Cache::remember('foo', 300, fn () => $this->client
+        $translations = $this->client
             ->withProgressbar($command->getOutput()->createProgressBar())
-            ->getTranslations());
+            ->getTranslations();
         $command->getComponents()->info(sprintf('%s translations downloaded', $translations->count()));
 
         $this->repository->saveTranslations($translations);
