@@ -28,35 +28,35 @@ class LocalTranslationRepositoryTest extends TestCase
         }
     }
 
-    public function testItCanExtractLocalesFromFiles()
+    public function test_it_can_extract_locales_from_files()
     {
         $locales = $this->createSubject()->getLocales();
 
         self::assertEquals(['de', 'en'], $locales);
     }
 
-    public function testItCanGetTranslationFiles()
+    public function test_it_can_get_translation_files()
     {
         $files = $this->createSubject()->getTranslationFiles();
 
         self::assertCount(4, $files);
     }
 
-    public function testItCanGetTranslationFilesFilteredByLocale()
+    public function test_it_can_get_translation_files_filtered_by_locale()
     {
         $files = $this->createSubject()->getTranslationFiles('en');
 
         self::assertCount(2, $files);
     }
 
-    public function testItCanGetTranslationFilesFilteredByType()
+    public function test_it_can_get_translation_files_filtered_by_type()
     {
         $files = $this->createSubject()->getTranslationFiles(type: TranslationType::PHP);
 
         self::assertCount(2, $files);
     }
 
-    public function testItMergesCorrectlyOnSave()
+    public function test_it_merges_correctly_on_save()
     {
         $repo = $this->createSubject();
 
