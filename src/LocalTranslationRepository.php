@@ -121,7 +121,7 @@ class LocalTranslationRepository
 
             $merged = array_merge($existingTranslations, $newTranslations, $skippedKeys);
 
-            $content = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
+            $content = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL;
             $this->fs->put($absolutePath, $content);
         }
     }

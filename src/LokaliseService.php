@@ -59,7 +59,7 @@ class LokaliseService
         $translations = $this->prepare($translations);
 
         $this->client->uploadFile(
-            json_encode($translations, JSON_UNESCAPED_UNICODE),
+            json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ltrim(str_replace($this->basePath, '', $file->file->getRealPath()), '/'),
             $file->locale(),
             $cleanup,

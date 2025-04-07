@@ -12,7 +12,6 @@ class LocalTranslationRepositoryTest extends TestCase
 {
     public static function setUpBeforeClass(): void
     {
-
         self::tearDownAfterClass();
         $fs = new Filesystem;
         $fs->copyDirectory(dirname(__DIR__).'/fixtures', dirname(__DIR__).'/fixtures_backup');
@@ -67,6 +66,19 @@ class LocalTranslationRepositoryTest extends TestCase
         $translations = $repo->getTranslations('de/validation.php');
 
         self::assertEquals($translations['validation.accepted'], 'foo');
+    }
+
+    public function test_it_does_not_escape_slashes()
+    {
+        $repo = $this->createSubject();
+
+        $repo->saveTranslations(collect([
+            new Translation('de', 'key with /', 'value with /'),
+        ]));
+
+        $translations = $repo->getTranslations('de.json');
+
+        self::assertEquals($translations['key with /'], 'value with /');
     }
 
     private function createSubject(): LocalTranslationRepository
