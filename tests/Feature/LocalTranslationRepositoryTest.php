@@ -81,6 +81,23 @@ class LocalTranslationRepositoryTest extends TestCase
         self::assertEquals($translations['key with /'], 'value with /');
     }
 
+    public function test_it_sort_keys_by_alphabet()
+    {
+        $repo = $this->createSubject();
+
+        $repo->saveTranslations(collect([
+            new Translation('de', 'foo.b', 'b translation'),
+            new Translation('de', 'foo.a', 'a translation'),
+        ]));
+
+        $translations = $repo->getTranslations('de/foo.php');
+
+        self::assertSame($translations, [
+            'foo.a' => 'a translation',
+            'foo.b' => 'b translation',
+        ]);
+    }
+
     private function createSubject(): LocalTranslationRepository
     {
         return new LocalTranslationRepository(new Filesystem, dirname(__DIR__).'/fixtures');

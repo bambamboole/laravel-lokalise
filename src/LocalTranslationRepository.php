@@ -94,6 +94,8 @@ class LocalTranslationRepository
                         ? Arr::dot(require $absolutePath)
                         : [];
                     $merged = array_merge($existingTranslations, $newTranslations);
+                    // We sort by key, so that the nesting behaves the same every time
+                    ksort($merged);
                     $nested = Arr::undot($merged);
                     $this->fs->put($absolutePath, (new ArrayExporter)->export($nested));
                     $dotted = Arr::dot($nested);
@@ -120,8 +122,9 @@ class LocalTranslationRepository
                 : [];
 
             $merged = array_merge($existingTranslations, $newTranslations, $skippedKeys);
+            ksort($merged);
 
-            $content = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL;
+            $content = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
             $this->fs->put($absolutePath, $content);
         }
     }
