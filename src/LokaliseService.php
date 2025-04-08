@@ -90,15 +90,26 @@ class LokaliseService
         $this->client->deleteKeys($keysToDelete->all());
     }
 
-    private function prepare(array $translations): array
+    public function prepare(array $translations): array
     {
         $lokaliseTranslations = [];
 
         foreach ($translations as $key => $value) {
+            // For keys, we can use the simple regex
             $lokaliseKey = preg_replace("/:([\w\d]+)/", '{{$1}}', $key);
-            $translationWithReplacedVariableSyntax = preg_replace("/:([\w\d]+)/", '{{$1}}', $value);
+
+            // For translation values, we need more sophisticated pattern matching
+            // This regex avoids replacing:
+            // 1. Variables already in curly braces like {VARIABLE}
+            // 2. Variables inside HTML attributes like style="width:100%"
+            $translationWithReplacedVariableSyntax = preg_replace(
+                '/(?<![\{\w]):([\w\d]+)(?!\}|%|[^\s\.,;!\?<>\(\)\[\]\{\}\'"])/m',
+                '{{$1}}',
+                $value
+            );
+
             if (Str::contains($translationWithReplacedVariableSyntax, '|')) {
-                [$singular, $plural] = explode('|', $translationWithReplacedVariableSyntax);
+                [$singular, $plural] = explode('|', $translationWithReplacedVariableSyntax, 2);
                 $translationWithReplacedVariableSyntax = json_encode([
                     'one' => $singular,
                     'other' => $plural,
