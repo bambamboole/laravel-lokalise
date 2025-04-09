@@ -5,6 +5,8 @@ namespace Bambamboole\LaravelLokalise\Tests\Unit;
 use Bambamboole\LaravelLokalise\LocalTranslationRepository;
 use Bambamboole\LaravelLokalise\LokaliseClient;
 use Bambamboole\LaravelLokalise\LokaliseService;
+use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\TestCase;
 
 class LokaliseServiceTest extends TestCase
@@ -53,5 +55,42 @@ class LokaliseServiceTest extends TestCase
 
         // Verify mixed example works correctly
         $this->assertEquals('<div style="color:red; width:50%;">The {{attribute}} field is {{status}}.</div>', $result['mixed_html']);
+    }
+
+    public function test_it_skips_json_files_if_configured()
+    {
+        $basePath = dirname(__DIR__).'/fixtures';
+        $repo = new LocalTranslationRepository(new Filesystem, $basePath);
+        $client = $this->createMock(LokaliseClient::class);
+        $client->expects(self::once())
+            ->method('getLocales')
+            ->willReturn(['en', 'de']);
+        $client->expects(self::exactly(2))
+            ->method('uploadFile')
+            ->with(self::anything(), self::callback(fn ($file) => Str::endsWith($file, '.php')));
+
+        $service = new LokaliseService($client, $repo, dirname(__DIR__).'/fixtures');
+
+        $service->uploadTranslations();
+    }
+
+    public function test_it_includes_json_files_if_configured()
+    {
+        $basePath = dirname(__DIR__).'/fixtures';
+        $repo = new LocalTranslationRepository(new Filesystem, $basePath);
+        $client = $this->createMock(LokaliseClient::class);
+        $client->expects(self::once())
+            ->method('getLocales')
+            ->willReturn(['en', 'de']);
+        $client->expects(self::exactly(4))
+            ->method('uploadFile')
+            ->with(
+                self::anything(),
+                self::callback(fn ($file) => Str::endsWith($file, '.php') || Str::endsWith($file, '.json')),
+            );
+
+        $service = new LokaliseService($client, $repo, dirname(__DIR__).'/fixtures', false);
+
+        $service->uploadTranslations();
     }
 }

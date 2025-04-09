@@ -15,6 +15,7 @@ class LokaliseService
         private readonly LokaliseClient $client,
         private readonly LocalTranslationRepository $repository,
         private readonly string $basePath,
+        private readonly bool $skipJsonFiles = true,
     ) {}
 
     public function downloadTranslations(DownloadTranslationFilesCommand $command): void
@@ -34,7 +35,7 @@ class LokaliseService
         $locales = $this->client->getLocales();
 
         foreach ($locales as $locale) {
-            $files = $this->repository->getTranslationFiles($locale);
+            $files = $this->repository->getTranslationFiles($locale, $this->skipJsonFiles ? TranslationType::PHP : null);
             foreach ($files as $file) {
                 $this->uploadFile($file, $cleanup, $replace);
             }
@@ -46,7 +47,7 @@ class LokaliseService
 
     public function uploadSpecificFiles(array $files, bool $cleanup = true, bool $replace = true): void
     {
-        $translationFiles = $this->repository->getTranslationFiles();
+        $translationFiles = $this->repository->getTranslationFiles(type: $this->skipJsonFiles ? TranslationType::PHP : null);
         $foundFiles = array_filter($translationFiles, fn (TranslationFile $tf) => in_array($tf->file->getRealPath(), $files));
         foreach ($foundFiles as $file) {
             $this->uploadFile($file, $cleanup, $replace);
@@ -95,6 +96,9 @@ class LokaliseService
         $lokaliseTranslations = [];
 
         foreach ($translations as $key => $value) {
+            if (is_array($value) && empty($value)) {
+                continue;
+            }
             // For keys, we can use the simple regex
             $lokaliseKey = preg_replace("/:([\w\d]+)/", '{{$1}}', $key);
 

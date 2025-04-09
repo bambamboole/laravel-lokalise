@@ -27,6 +27,7 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
                 $app->make(LokaliseClient::class),
                 $app->make(LocalTranslationRepository::class),
                 config('lokalise.base_path'),
+                config('lokalise.skip_json_files', true),
             );
         });
     }
