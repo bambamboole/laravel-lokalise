@@ -36,10 +36,11 @@ class TranslationConverter
         if ($json && isset($json['one'], $json['other'])) {
             $translation = $json['one'].'|'.$json['other'];
         }
+        // Handle [%1$s:attribute] format
+        $translation = Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1');
+        // Handle {{variable}} format - convert it back to :variable
+        $translation = $translation->replaceMatches('/\{\{(\w+)\}\}/', ':$1');
 
-        // I get these strings and need to convert it to colon prefix variable names:
-        // The [%1$s:attribute] field must be present when [%1$s:values] are present.
-        // The :attribute field must be present when :values are present.
-        return Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1')->__toString();
+        return $translation->__toString();
     }
 }
