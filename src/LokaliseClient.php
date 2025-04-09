@@ -65,7 +65,11 @@ class LokaliseClient
             $key = Str::replace('::', '.', $data['key_name']['web']);
             $translations = $translations->merge(
                 array_map(
-                    fn (array $translation) => $this->prepareTranslation($translation['language_iso'], $key, $translation['translation']),
+                    fn (array $translation) => new Translation(
+                        $translation['language_iso'],
+                        $key,
+                        TranslationConverter::fromLokalise($translation['translation']),
+                    ),
                     $data['translations'] ?? [],
                 )
             );
@@ -120,27 +124,5 @@ class LokaliseClient
                     'keys' => $keys,
                 ],
             );
-    }
-
-    private function prepareTranslation(string $locale, string $key, ?string $translation = null): ?Translation
-    {
-        if (empty($translation)) {
-            return null;
-        }
-
-        // Check if the translation is a plural translation and map it to a Laravel compatible format
-        $json = json_decode($translation, true);
-        if ($json && isset($json['one'], $json['other'])) {
-            if (empty($json['one']) && empty($json['other'])) {
-                return null;
-            }
-            $translation = $json['one'].'|'.$json['other'];
-        }
-        // I get these strings and need to convert it to colon prefix variable names:
-        // The [%1$s:attribute] field must be present when [%1$s:values] are present.
-        // The :attribute field must be present when :values are present.
-        $translation = Str::of($translation)->replaceMatches('/\[\%1\$s:(\w+)\]/', ':$1')->__toString();
-
-        return new Translation($locale, $key, $translation);
     }
 }

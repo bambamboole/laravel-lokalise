@@ -102,24 +102,7 @@ class LokaliseService
             // For keys, we can use the simple regex
             $lokaliseKey = preg_replace("/:([\w\d]+)/", '{{$1}}', $key);
 
-            // For translation values, we need more sophisticated pattern matching
-            // This regex avoids replacing:
-            // 1. Variables already in curly braces like {VARIABLE}
-            // 2. Variables inside HTML attributes like style="width:100%"
-            $translationWithReplacedVariableSyntax = preg_replace(
-                '/(?<![\{\w]):([\w\d]+)(?!\}|%|[^\s\.,;!\?<>\(\)\[\]\{\}\'"])/m',
-                '{{$1}}',
-                $value
-            );
-
-            if (Str::contains($translationWithReplacedVariableSyntax, '|')) {
-                [$singular, $plural] = explode('|', $translationWithReplacedVariableSyntax, 2);
-                $translationWithReplacedVariableSyntax = json_encode([
-                    'one' => $singular,
-                    'other' => $plural,
-                ], JSON_UNESCAPED_UNICODE);
-            }
-            $lokaliseTranslations[$lokaliseKey] = $translationWithReplacedVariableSyntax;
+            $lokaliseTranslations[$lokaliseKey] = TranslationConverter::toLokalise($value);
         }
 
         return $lokaliseTranslations;
