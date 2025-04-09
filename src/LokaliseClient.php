@@ -16,6 +16,7 @@ class LokaliseClient
     public function __construct(
         private readonly LokaliseApiClient $apiClient,
         private readonly string $projectId,
+        private readonly bool|array $convertPlaceholders = false,
     ) {}
 
     public function withProgressbar(ProgressBar $progressBar): self
@@ -85,7 +86,7 @@ class LokaliseClient
             'filename' => $filename,
             'lang_iso' => $locale,
             'format' => 'json',
-            'convert_placeholders' => true,
+            'convert_placeholders' => $this->shouldConvertPlaceholders($filename),
             'replace_modified' => $replace,
             'distinguish_by_file' => true,
             'slashn_to_linebreak' => true,
@@ -124,5 +125,16 @@ class LokaliseClient
                     'keys' => $keys,
                 ],
             );
+    }
+
+    private function shouldConvertPlaceholders(string $fileName): bool
+    {
+        if (is_bool($this->convertPlaceholders)) {
+            return $this->convertPlaceholders;
+        }
+
+        return collect($this->convertPlaceholders)
+            ->filter(fn ($file) => Str::contains($fileName, $file))
+            ->isNotEmpty();
     }
 }

@@ -95,7 +95,7 @@ class LokaliseClientTest extends TestCase
                 'filename' => 'test.json',
                 'lang_iso' => 'en',
                 'format' => 'json',
-                'convert_placeholders' => true,
+                'convert_placeholders' => false,
                 'replace_modified' => false,
                 'distinguish_by_file' => true,
                 'slashn_to_linebreak' => true,

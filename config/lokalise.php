@@ -6,4 +6,5 @@ return [
     'base_path' => base_path(),
     'skip_json_files' => true,
     'convert_keys' => false,
+    'convert_placeholders' => false,
 ];
