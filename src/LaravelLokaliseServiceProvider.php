@@ -4,6 +4,7 @@ namespace Bambamboole\LaravelLokalise;
 
 use Bambamboole\LaravelLokalise\Commands\DownloadTranslationFilesCommand;
 use Bambamboole\LaravelLokalise\Commands\InfoCommand;
+use Bambamboole\LaravelLokalise\Commands\SyncFileCommand;
 use Bambamboole\LaravelLokalise\Commands\UploadTranslationFilesCommand;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\Filesystem;
@@ -42,6 +43,7 @@ class LaravelLokaliseServiceProvider extends ServiceProvider
                 InfoCommand::class,
                 DownloadTranslationFilesCommand::class,
                 UploadTranslationFilesCommand::class,
+                SyncFileCommand::class,
             ]);
         }
     }
