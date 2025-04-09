@@ -16,6 +16,7 @@ class LokaliseService
         private readonly LocalTranslationRepository $repository,
         private readonly string $basePath,
         private readonly bool $skipJsonFiles = true,
+        private readonly bool $convertKeys = false,
     ) {}
 
     public function downloadTranslations(DownloadTranslationFilesCommand $command): void
@@ -100,7 +101,9 @@ class LokaliseService
                 continue;
             }
             // For keys, we can use the simple regex
-            $lokaliseKey = preg_replace("/:([\w\d]+)/", '{{$1}}', $key);
+            $lokaliseKey = $this->convertKeys
+                ? preg_replace("/:([\w\d]+)/", '{{$1}}', $key)
+                : $key;
 
             $lokaliseTranslations[$lokaliseKey] = TranslationConverter::toLokalise($value);
         }

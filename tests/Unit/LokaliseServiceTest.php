@@ -7,6 +7,7 @@ use Bambamboole\LaravelLokalise\LokaliseClient;
 use Bambamboole\LaravelLokalise\LokaliseService;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -52,8 +53,42 @@ class LokaliseServiceTest extends TestCase
         $this->createSubject(false)->uploadTranslations();
     }
 
-    private function createSubject(bool $skipJsonFiles = true): LokaliseService
+    #[DataProvider('provideForDisabledKeyConversion')]
+    public function test_converting_keys_can_be_disabled(array $in, array $out)
     {
-        return new LokaliseService($this->client, $this->repo, $this->basePath, $skipJsonFiles);
+        self:
+        self::assertEquals($out, $this->createSubject(false)->prepare($in));
+    }
+
+    public static function provideForDisabledKeyConversion(): array
+    {
+        return [
+            [
+                'in' => ['with :variable' => 'value'],
+                'out' => ['with :variable' => 'value'],
+            ],
+        ];
+    }
+
+    #[DataProvider('provideForEnabledKeyConversion')]
+    public function test_converting_keys_can_be_enabled(array $in, array $out)
+    {
+        self:
+        self::assertEquals($out, $this->createSubject(false, true)->prepare($in));
+    }
+
+    public static function provideForEnabledKeyConversion(): array
+    {
+        return [
+            [
+                'in' => ['with :variable' => 'value'],
+                'out' => ['with {{variable}}' => 'value'],
+            ],
+        ];
+    }
+
+    private function createSubject(bool $skipJsonFiles = true, bool $convertKeys = false): LokaliseService
+    {
+        return new LokaliseService($this->client, $this->repo, $this->basePath, $skipJsonFiles, $convertKeys);
     }
 }
