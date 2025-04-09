@@ -76,7 +76,7 @@ class LokaliseClient
             );
         }
 
-        return $translations->filter();
+        return $translations->filter(fn (Translation $translation) => ! empty($translation->value));
     }
 
     public function uploadFile(string $content, string $filename, string $locale, bool $cleanup = true, bool $replace = false): void
