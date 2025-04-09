@@ -112,7 +112,7 @@ class LocalTranslationRepository
 
             $absolutePath = $this->langPath.'/'.$locale.'.json';
             $existingTranslations = $this->fs->exists($absolutePath)
-                ? json_decode($this->fs->get($absolutePath), true, JSON_UNESCAPED_UNICODE)
+                ? json_decode($this->fs->get($absolutePath), true, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
                 : [];
             $jsonFileTranslations = $files->first(fn ($_, string $key) => str_ends_with($key, '.json'));
 
@@ -124,7 +124,7 @@ class LocalTranslationRepository
             $merged = array_merge($existingTranslations, $newTranslations, $skippedKeys);
             ksort($merged);
 
-            $content = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;
+            $content = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL;
             $this->fs->put($absolutePath, $content);
         }
     }
